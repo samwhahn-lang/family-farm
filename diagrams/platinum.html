@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platinum Layer — Data Diagram</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    :root {
+      --bg:#0d1117; --surface:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+      --blue:#388bfd; --blue-dim:#1c2d4a; --purple:#bc8cff; --purple-dim:#2a1a4a;
+      --orange:#e3813a; --orange-dim:#3a2010; --green:#3fb950; --green-dim:#122d1a;
+      --teal:#39d0c8; --teal-dim:#0d2e2c; --red:#f85149; --red-dim:#3d1111;
+      --gold:#d4a017; --gold-dim:#2e2200;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.6;min-height:100vh}
+    .page-header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 40px;display:flex;align-items:center;justify-content:space-between}
+    .page-header h1{font-size:1.1rem;font-weight:600}
+    .page-header h1 span{color:var(--purple)}
+    .meta{font-size:.75rem;color:var(--muted)}
+    .layer-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);margin-right:10px}
+    .canvas{padding:40px;overflow-x:auto}
+    .flow{display:flex;align-items:flex-start;gap:0;min-width:max-content}
+    .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;margin-top:54px;flex-shrink:0}
+    .arrow svg{display:block}
+    .card{width:230px;flex-shrink:0;border-radius:10px;border:1px solid var(--border);background:var(--surface);overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+    .card-header{padding:10px 14px 9px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .card-header .icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+    .card-header .title{font-size:.78rem;font-weight:700;letter-spacing:.02em}
+    .card-header .sub{font-size:.68rem;color:var(--muted);margin-top:1px}
+    .card-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+    .section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px}
+    .field-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .field-row:last-child{border-bottom:none}
+    .field-key{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);flex-shrink:0}
+    .field-val{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--text);text-align:right;word-break:break-all}
+    .field-type{font-size:.65rem;color:var(--muted);font-style:italic}
+    .badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:500;background:rgba(255,255,255,.07);border:1px solid var(--border);margin:2px 2px 2px 0}
+    .logic-step{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.72rem}
+    .logic-step:last-child{border-bottom:none}
+    .step-num{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:1px}
+    .step-text{color:var(--text);line-height:1.5}
+    .step-text code{font-family:'JetBrains Mono',monospace;font-size:.65rem;background:rgba(255,255,255,.07);padding:0 4px;border-radius:3px}
+    .warn-chip{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:6px;font-size:.7rem}
+    .c-blue{color:var(--blue)} .bg-blue{background:var(--blue-dim);border-color:var(--blue)}
+    .c-purple{color:var(--purple)} .bg-purple{background:var(--purple-dim);border-color:var(--purple)}
+    .c-orange{color:var(--orange)} .bg-orange{background:var(--orange-dim);border-color:var(--orange)}
+    .c-green{color:var(--green)} .bg-green{background:var(--green-dim);border-color:var(--green)}
+    .c-teal{color:var(--teal)} .bg-teal{background:var(--teal-dim);border-color:var(--teal)}
+    .c-gold{color:var(--gold)} .bg-gold{background:var(--gold-dim);border-color:var(--gold)}
+    .divider{border:none;border-top:1px solid var(--border);margin:2px 0}
+    .page-footer{text-align:center;padding:24px;color:var(--muted);font-size:.72rem;border-top:1px solid var(--border);margin-top:20px}
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1><span class="layer-pill">Platinum</span> Data Pipeline &mdash; Architecture Diagram</h1>
+    <div class="meta">Corn Belt Weather &middot; Self-contained Plotly.js HTML dashboard &middot; 2026-05-08</div>
+  </div>
+  <div class="meta" style="text-align:right">
+    Midwest Crop Analysis<br>
+    <span style="color:var(--purple)">Stage 4 of 4</span>
+  </div>
+</div>
+
+<div class="canvas">
+<div class="flow">
+
+  <!-- GOLD INPUT -->
+  <div class="card">
+    <div class="card-header bg-gold" style="border-bottom-color:rgba(212,160,23,.3)">
+      <div class="icon" style="background:rgba(212,160,23,.2)">&#11208;</div>
+      <div>
+        <div class="title c-gold">Gold Delta Input</div>
+        <div class="sub">season_weather</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Path</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-val" style="font-size:.62rem;color:var(--gold)">data/gold/season_weather/</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Fields consumed</div>
+        <div class="field-row">
+          <span class="field-key">year</span>
+          <span class="field-type">Int</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">growingDegreeDays</span>
+          <span class="field-type">Double</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">totalPrecipMm</span>
+          <span class="field-type">Double</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">frostFreeDays</span>
+          <span class="field-type">Int</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">extremeHeatDays</span>
+          <span class="field-type">Int</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">droughtIndex</span>
+          <span class="field-type">Double</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="warn-chip" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red)">
+          <span>&#9888;</span> 0 rows &rarr; <code style="font-size:.62rem">sys.exit(1)</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0%" stop-color="#d4a017"/><stop offset="100%" stop-color="#bc8cff"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g1)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#bc8cff"/>
+    </svg>
+  </div>
+
+  <!-- EXPORT JOB -->
+  <div class="card">
+    <div class="card-header bg-purple" style="border-bottom-color:rgba(188,140,255,.3)">
+      <div class="icon" style="background:rgba(188,140,255,.2)">&#9654;</div>
+      <div>
+        <div class="title c-purple">PlatinumExportJob</div>
+        <div class="sub">com.cornbelt.platinum</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Steps</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">1</div>
+          <div class="step-text">Read gold, <code>orderBy("year")</code>, collect to driver</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">2</div>
+          <div class="step-text">Serialize rows to JS object literal array (string concat &mdash; no template literals)</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">3</div>
+          <div class="step-text">Inject JS array into <code>buildHtml()</code> scaffold with embedded Plotly</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">4</div>
+          <div class="step-text">Write with <code>OutputStreamWriter(UTF-8)</code> to preserve degree symbols</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Encoding note</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5">
+          Windows default CP1252 corrupts °&mdash; always use explicit <code style="font-size:.62rem">StandardCharsets.UTF_8</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g2" x1="0" x2="1"><stop offset="0%" stop-color="#bc8cff"/><stop offset="100%" stop-color="#bc8cff"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g2)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#bc8cff"/>
+    </svg>
+  </div>
+
+  <!-- DASHBOARD FEATURES -->
+  <div class="card">
+    <div class="card-header bg-blue" style="border-bottom-color:rgba(56,139,253,.3)">
+      <div class="icon" style="background:rgba(56,139,253,.2)">&#128202;</div>
+      <div>
+        <div class="title c-blue">Dashboard Features</div>
+        <div class="sub">Plotly.js 2.27.0 (CDN)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Charts</div>
+        <div class="field-row">
+          <span class="field-key">type</span>
+          <span class="field-val">line+markers / bar</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">y-axes</span>
+          <span class="field-val">dual (left / right)</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">left axis</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">GDD / frost days / heat days</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">right axis</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">precip / drought index</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Controls</div>
+        <div class="field-row">
+          <span class="field-key">year range</span>
+          <span class="field-val">min / max inputs</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">metrics</span>
+          <span class="field-val">toggle chips</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">chart type</span>
+          <span class="field-val">line / bar buttons</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Data table condition tags</div>
+        <div>
+          <span class="badge" style="color:var(--red)">Drought</span>
+          <span style="font-size:.65rem;color:var(--muted)">droughtIndex &lt; -0.2</span>
+        </div>
+        <div style="margin-top:4px">
+          <span class="badge" style="color:var(--orange)">Stress</span>
+          <span style="font-size:.65rem;color:var(--muted)">extremeHeatDays &gt; 20</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g3" x1="0" x2="1"><stop offset="0%" stop-color="#388bfd"/><stop offset="100%" stop-color="#bc8cff"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g3)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#bc8cff"/>
+    </svg>
+  </div>
+
+  <!-- STATS CARDS -->
+  <div class="card">
+    <div class="card-header bg-green" style="border-bottom-color:rgba(63,185,80,.3)">
+      <div class="icon" style="background:rgba(63,185,80,.2)">&#9632;</div>
+      <div>
+        <div class="title c-green">Summary Stats Cards</div>
+        <div class="sub">per metric</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Metrics tracked</div>
+        <div><span class="badge">GDD</span><span class="badge">Precip</span></div>
+        <div style="margin-top:4px"><span class="badge">Frost-Free Days</span></div>
+        <div style="margin-top:4px"><span class="badge">Heat Stress Days</span><span class="badge">Drought Index</span></div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Stats shown per metric</div>
+        <div class="field-row">
+          <span class="field-key">avg</span>
+          <span class="field-val c-green">across filtered years</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">min</span>
+          <span class="field-val c-green">with year label</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">max</span>
+          <span class="field-val c-green">with year label</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g4" x1="0" x2="1"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39d0c8"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g4)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#39d0c8"/>
+    </svg>
+  </div>
+
+  <!-- HTML OUTPUT -->
+  <div class="card">
+    <div class="card-header bg-teal" style="border-bottom-color:rgba(57,208,200,.3)">
+      <div class="icon" style="background:rgba(57,208,200,.2)">&#127760;</div>
+      <div>
+        <div class="title c-teal">HTML Dashboard</div>
+        <div class="sub">platinum/index.html</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Output</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">path</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--teal)">platinum/index.html</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">encoding</span>
+          <span class="field-val">UTF-8</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">self-contained</span>
+          <span class="field-val c-teal">yes</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Dependencies</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">Plotly.js 2.27.0</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">cdn.plot.ly (CDN &mdash; requires internet)</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">fonts</span>
+          <span class="field-val">system-ui</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">JS concat rule</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5">
+          No JS backtick template literals inside Scala s-strings &mdash; use <code style="font-size:.62rem">'+r.year+'</code> style concat. Backticks conflict with Scala interpolation parser.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="page-footer">
+  Stage 4 of 4 &middot; 2026-05-08 &middot;
+  Prev: <strong>Gold &rarr; SeasonWeatherJob</strong> &nbsp;&middot;&nbsp;
+  Output: <strong>platinum/index.html</strong>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silver Layer — Data Diagram</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    :root {
+      --bg:#0d1117; --surface:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e;
+      --blue:#388bfd; --blue-dim:#1c2d4a; --purple:#bc8cff; --purple-dim:#2a1a4a;
+      --orange:#e3813a; --orange-dim:#3a2010; --green:#3fb950; --green-dim:#122d1a;
+      --teal:#39d0c8; --teal-dim:#0d2e2c; --red:#f85149; --red-dim:#3d1111;
+      --silver:#8b949e; --silver-dim:#1a2030;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.6;min-height:100vh}
+    .page-header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 40px;display:flex;align-items:center;justify-content:space-between}
+    .page-header h1{font-size:1.1rem;font-weight:600}
+    .page-header h1 span{color:var(--blue)}
+    .meta{font-size:.75rem;color:var(--muted)}
+    .layer-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);margin-right:10px}
+    .canvas{padding:40px;overflow-x:auto}
+    .flow{display:flex;align-items:flex-start;gap:0;min-width:max-content}
+    .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;margin-top:54px;flex-shrink:0}
+    .arrow svg{display:block}
+    .card{width:230px;flex-shrink:0;border-radius:10px;border:1px solid var(--border);background:var(--surface);overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+    .card-header{padding:10px 14px 9px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .card-header .icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+    .card-header .title{font-size:.78rem;font-weight:700;letter-spacing:.02em}
+    .card-header .sub{font-size:.68rem;color:var(--muted);margin-top:1px}
+    .card-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+    .section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px}
+    .field-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .field-row:last-child{border-bottom:none}
+    .field-key{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);flex-shrink:0}
+    .field-val{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--text);text-align:right;word-break:break-all}
+    .field-type{font-size:.65rem;color:var(--muted);font-style:italic}
+    .badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:500;background:rgba(255,255,255,.07);border:1px solid var(--border);margin:2px 2px 2px 0}
+    .logic-step{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.72rem}
+    .logic-step:last-child{border-bottom:none}
+    .step-num{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:1px}
+    .step-text{color:var(--text);line-height:1.5}
+    .step-text code{font-family:'JetBrains Mono',monospace;font-size:.65rem;background:rgba(255,255,255,.07);padding:0 4px;border-radius:3px}
+    .warn-chip{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:6px;font-size:.7rem;background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue)}
+    .c-blue{color:var(--blue)} .bg-blue{background:var(--blue-dim);border-color:var(--blue)}
+    .c-purple{color:var(--purple)} .bg-purple{background:var(--purple-dim);border-color:var(--purple)}
+    .c-orange{color:var(--orange)} .bg-orange{background:var(--orange-dim);border-color:var(--orange)}
+    .c-green{color:var(--green)} .bg-green{background:var(--green-dim);border-color:var(--green)}
+    .c-teal{color:var(--teal)} .bg-teal{background:var(--teal-dim);border-color:var(--teal)}
+    .divider{border:none;border-top:1px solid var(--border);margin:2px 0}
+    .page-footer{text-align:center;padding:24px;color:var(--muted);font-size:.72rem;border-top:1px solid var(--border);margin-top:20px}
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1><span class="layer-pill">Silver</span> Data Pipeline &mdash; Architecture Diagram</h1>
+    <div class="meta">Corn Belt Weather &middot; Station GHCND:USC00250622 &middot; Quality-validated wide format &middot; 2026-05-08</div>
+  </div>
+  <div class="meta" style="text-align:right">
+    Midwest Crop Analysis<br>
+    <span style="color:var(--blue)">Stage 2 of 4</span>
+  </div>
+</div>
+
+<div class="canvas">
+<div class="flow">
+
+  <!-- BRONZE INPUT -->
+  <div class="card">
+    <div class="card-header bg-orange" style="border-bottom-color:rgba(227,129,58,.3)">
+      <div class="icon" style="background:rgba(227,129,58,.2)">&#11208;</div>
+      <div>
+        <div class="title c-orange">Bronze Delta Input</div>
+        <div class="sub">noaa_observations</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Path</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-val" style="font-size:.62rem;color:var(--orange)">data/bronze/noaa_observations/</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Schema (long format)</div>
+        <div class="field-row">
+          <span class="field-key">stationId</span>
+          <span class="field-type">String</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">date</span>
+          <span class="field-type">String</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">dataType</span>
+          <span class="field-type">String</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">value</span>
+          <span class="field-type">Option[Double]</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">attributes</span>
+          <span class="field-type">Option[String]</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Filter applied</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">stationId ==</span>
+          <span class="field-val" style="font-size:.63rem;color:var(--orange)">GHCND:USC00250622</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0%" stop-color="#e3813a"/><stop offset="100%" stop-color="#388bfd"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g1)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#388bfd"/>
+    </svg>
+  </div>
+
+  <!-- QUALITY FLAGS -->
+  <div class="card">
+    <div class="card-header bg-purple" style="border-bottom-color:rgba(188,140,255,.3)">
+      <div class="icon" style="background:rgba(188,140,255,.2)">&#9873;</div>
+      <div>
+        <div class="title c-purple">Quality Flagging</div>
+        <div class="sub">NOAA attributes parsing</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Attributes format</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">structure</span>
+          <span class="field-val" style="font-size:.63rem;color:var(--muted)">meas_flag, quality_flag, source_flag [, time]</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">SUSPECT rule</span>
+          <span class="field-val" style="font-size:.63rem;color:var(--purple)">split(",")[1].trim != ""</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Per station / date aggregate</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">1</div>
+          <div class="step-text"><code>max(suspect)</code> &rarr; <code>anySuspect</code></div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">2</div>
+          <div class="step-text"><code>count(value isNotNull)</code> &rarr; <code>presentCount</code></div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">qualityFlag derivation</div>
+        <div class="field-row">
+          <span class="field-key">presentCount == 0</span>
+          <span class="field-val" style="color:var(--red)">MISSING</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">anySuspect</span>
+          <span class="field-val" style="color:var(--orange)">SUSPECT</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">otherwise</span>
+          <span class="field-val" style="color:var(--green)">OK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g2" x1="0" x2="1"><stop offset="0%" stop-color="#388bfd"/><stop offset="100%" stop-color="#388bfd"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g2)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#388bfd"/>
+    </svg>
+  </div>
+
+  <!-- TRANSFORM JOB -->
+  <div class="card">
+    <div class="card-header bg-blue" style="border-bottom-color:rgba(56,139,253,.3)">
+      <div class="icon" style="background:rgba(56,139,253,.2)">&#9654;</div>
+      <div>
+        <div class="title c-blue">WeatherTransformJob</div>
+        <div class="sub">com.cornbelt.silver</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Transform steps</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">1</div>
+          <div class="step-text">Filter bronze to anchor station</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">2</div>
+          <div class="step-text">Parse attributes &rarr; <code>suspect</code> boolean per row</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">3</div>
+          <div class="step-text">Aggregate quality per <code>stationId / date</code></div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">4</div>
+          <div class="step-text">Pivot <code>dataType</code> long &rarr; wide (<code>first(value)</code>)</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">5</div>
+          <div class="step-text">Join quality, derive <code>qualityFlag</code></div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">6</div>
+          <div class="step-text">Parse date String &rarr; <code>LocalDate</code> (<code>yyyy-MM-dd</code>)</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">7</div>
+          <div class="step-text">Derive <code>month</code> (1&ndash;12) and <code>season</code> from date</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">8</div>
+          <div class="step-text">Compute 9 Boolean crop phase flags (corn / soybean / wheat &times; planting / growing / harvest)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g3" x1="0" x2="1"><stop offset="0%" stop-color="#388bfd"/><stop offset="100%" stop-color="#3fb950"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g3)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#3fb950"/>
+    </svg>
+  </div>
+
+  <!-- OUTPUT SCHEMA -->
+  <div class="card">
+    <div class="card-header bg-green" style="border-bottom-color:rgba(63,185,80,.3)">
+      <div class="icon" style="background:rgba(63,185,80,.2)">&#11835;</div>
+      <div>
+        <div class="title c-green">WeatherObservation</div>
+        <div class="sub">com.cornbelt.models</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Core fields</div>
+        <div class="field-row"><span class="field-key">stationId</span><span class="field-type">String</span></div>
+        <div class="field-row"><span class="field-key">date</span><span class="field-type">LocalDate</span></div>
+        <div class="field-row"><span class="field-key">tempMaxC</span><span class="field-type">Option[Double] °C</span></div>
+        <div class="field-row"><span class="field-key">tempMinC</span><span class="field-type">Option[Double] °C</span></div>
+        <div class="field-row"><span class="field-key">precipMm</span><span class="field-type">Option[Double] mm</span></div>
+        <div class="field-row"><span class="field-key">snowMm</span><span class="field-type">Option[Double] mm</span></div>
+        <div class="field-row"><span class="field-key">snowDepthMm</span><span class="field-type">Option[Double] mm</span></div>
+        <div class="field-row"><span class="field-key">qualityFlag</span><span class="field-type">String</span></div>
+        <div class="field-row"><span class="field-key">tempSource</span><span class="field-type">String</span></div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Temporal fields</div>
+        <div class="field-row"><span class="field-key">month</span><span class="field-type">Int &nbsp;1&ndash;12</span></div>
+        <div class="field-row"><span class="field-key">season</span><span class="field-type">String</span></div>
+        <div style="margin-top:4px">
+          <span class="badge">Spring</span><span class="badge">Summer</span>
+          <span class="badge">Autumn</span><span class="badge">Winter</span>
+        </div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:4px;line-height:1.6">
+          Spring Mar 20&ndash;Jun 20 &middot; Summer Jun 21&ndash;Sep 22<br>
+          Autumn Sep 23&ndash;Dec 20 &middot; Winter Dec 21&ndash;Mar 19
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Crop phase flags (Boolean)</div>
+        <div class="field-row"><span class="field-key">cornPlanting</span><span class="field-type">Apr 20 &ndash; May 15</span></div>
+        <div class="field-row"><span class="field-key">cornGrowing</span><span class="field-type">May 1 &ndash; Sep 30</span></div>
+        <div class="field-row"><span class="field-key">cornHarvest</span><span class="field-type">Sep 1 &ndash; Oct 31</span></div>
+        <div class="field-row"><span class="field-key">soybeanPlanting</span><span class="field-type">May 1 &ndash; Jun 10</span></div>
+        <div class="field-row"><span class="field-key">soybeanGrowing</span><span class="field-type">May 1 &ndash; Oct 31</span></div>
+        <div class="field-row"><span class="field-key">soybeanHarvest</span><span class="field-type">Sep 20 &ndash; Oct 31</span></div>
+        <div class="field-row"><span class="field-key">wheatPlanting</span><span class="field-type">Sep 20 &ndash; Oct 31</span></div>
+        <div class="field-row"><span class="field-key">wheatGrowing</span><span class="field-type">Sep 20 &ndash; Jun 30*</span></div>
+        <div class="field-row"><span class="field-key">wheatHarvest</span><span class="field-type">Jun 1 &ndash; Jul 10</span></div>
+        <div style="font-size:.63rem;color:var(--muted);margin-top:4px">* overwinters &mdash; wraps calendar year</div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">qualityFlag values</div>
+        <div>
+          <span class="badge" style="color:var(--green)">OK</span>
+          <span class="badge" style="color:var(--orange)">SUSPECT</span>
+          <span class="badge" style="color:var(--red)">MISSING</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g4" x1="0" x2="1"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39d0c8"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g4)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#39d0c8"/>
+    </svg>
+  </div>
+
+  <!-- DELTA OUTPUT -->
+  <div class="card">
+    <div class="card-header bg-teal" style="border-bottom-color:rgba(57,208,200,.3)">
+      <div class="icon" style="background:rgba(57,208,200,.2)">&#11208;</div>
+      <div>
+        <div class="title c-teal">Silver Delta Table</div>
+        <div class="sub">weather_observations</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">Storage</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">path</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--teal)">data/silver/weather_observations/</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">format</span>
+          <span class="field-val">Delta Lake</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">write mode</span>
+          <span class="field-val c-teal">Overwrite</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Partitioning</div>
+        <div class="field-row">
+          <span class="field-key">partition by</span>
+          <span class="field-val c-teal">stationId</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Side output</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">row_count_by_year.csv</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">data/silver/ &mdash; year / count</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Known limitation</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5">
+          USC00250622 is precip-only after Mar 2013. TMAX/TMIN null for 2013+, so Gold covers 2000&ndash;2012 only.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="page-footer">
+  Stage 2 of 4 &middot; 2026-05-08 &middot;
+  Prev: <strong>Bronze &rarr; NoaaIngestJob</strong> &nbsp;&middot;&nbsp;
+  Next: <strong>Gold &rarr; SeasonWeatherJob</strong>
+</div>
+
+</body>
+</html>

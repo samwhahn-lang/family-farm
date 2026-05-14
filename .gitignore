@@ -1,0 +1,28 @@
+# Spark / Delta Lake data — too large for git
+data/
+
+# sbt build artifacts
+target/
+project/target/
+project/project/target/
+
+# Bloop / Metals (IDE build servers)
+.bloop/
+.metals/
+.bsp/
+
+# IntelliJ / VS Code
+.idea/
+*.iml
+.vscode/
+
+# Pipeline logs
+logs/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Credentials — never commit
+.credentials/
+*.xml
