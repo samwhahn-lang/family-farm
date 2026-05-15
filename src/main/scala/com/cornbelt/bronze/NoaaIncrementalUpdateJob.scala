@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.{Dataset, SaveMode}
 import org.apache.spark.sql.functions.{col, max => sparkMax}
+import java.nio.file.{Files, Paths}
 import java.time.LocalDate
 import scala.collection.JavaConverters._
 
@@ -37,6 +38,16 @@ object NoaaIncrementalUpdateJob extends LazyLogging {
     val countyFips = anchor.getString("county-fips")
     val dataTypes  = noaaCfg.getStringList("data-types").asScala.toList
     val outputPath = s"${pathsCfg.getString("bronze")}/noaa_observations"
+
+    // ── Cold-start guard: seed with full backfill if no table exists yet ─────
+    val bronzeTableExists =
+      Files.isDirectory(Paths.get(outputPath, "_delta_log"))
+
+    if (!bronzeTableExists) {
+      logger.warn(s"Bronze table not found at $outputPath — running full historical backfill to seed it.")
+      NoaaHistoricalBackfillJob.main(args)
+      return
+    }
 
     // ── Find the highest date already in bronze ───────────────────────────────
     val maxDateStr = spark.read.format("delta").load(outputPath)
