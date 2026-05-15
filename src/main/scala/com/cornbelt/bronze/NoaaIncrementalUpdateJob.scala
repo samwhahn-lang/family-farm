@@ -14,12 +14,12 @@ import scala.collection.JavaConverters._
  *  stations and APPENDS the new rows.  Safe to re-run; a second same-day run will
  *  find max_date == yesterday and skip (nothing past today to fetch).
  *
- *  Requires IngestBackfill to have been run at least once to seed the table.
+ *  Requires NoaaHistoricalBackfillJob to have been run at least once to seed the table.
  *
  *  Usage:
- *    sbt "runMain com.cornbelt.bronze.IngestUpdate"
+ *    sbt "runMain com.cornbelt.bronze.NoaaIncrementalUpdateJob"
  */
-object IngestUpdate extends LazyLogging {
+object NoaaIncrementalUpdateJob extends LazyLogging {
 
   private val config      = ConfigFactory.load().getConfig("corn-belt")
   private val noaaCfg     = config.getConfig("noaa")
@@ -43,22 +43,19 @@ object IngestUpdate extends LazyLogging {
       .agg(sparkMax(col("date")))
       .collect().head.getString(0)
 
-    if (maxDateStr == null) {
-      logger.error("Bronze table is empty — run IngestBackfill first.")
-      spark.stop()
-      sys.exit(1)
-    }
+    if (maxDateStr == null)
+      throw new RuntimeException("Bronze table has no date data — run NoaaHistoricalBackfillJob first.")
 
     val maxDate   = LocalDate.parse(maxDateStr)
     val today     = LocalDate.now()
-    val startDate = maxDate.plusDays(1)
+    val startDate = maxDate
 
     logger.info(s"Bronze max date: $maxDateStr")
     logger.info(s"Today:          $today")
-    logger.info(s"Fetching from:  $startDate")
+    logger.info(s"Fetching from:  $startDate (inclusive)")
 
     if (!startDate.isBefore(today.plusDays(1))) {
-      logger.info("Bronze is already current through yesterday — nothing to fetch.")
+      logger.info("Bronze max date is today or later — nothing to fetch.")
       return
     }
 
@@ -85,7 +82,7 @@ object IngestUpdate extends LazyLogging {
           val rangeEnd   = if (year == endYear)   today.toString    else s"$year-12-31"
           logger.info(s"  ${station.id} / $rangeStart – $rangeEnd ...")
           Thread.sleep(1000)
-          val rows = IngestBackfill.fetchDateRange(station.id, rangeStart, rangeEnd, dataTypes, token)
+          val rows = NoaaHistoricalBackfillJob.fetchDateRange(station.id, rangeStart, rangeEnd, dataTypes, token)
           logger.info(s"  ${station.id} / $rangeStart – $rangeEnd -> ${rows.size} rows")
           rows
         }
@@ -101,7 +98,30 @@ object IngestUpdate extends LazyLogging {
     ds.write.format("delta").mode(SaveMode.Append).save(outputPath)
     logger.info(s"Bronze append complete -> $outputPath  (max date was $maxDateStr, now through $today)")
 
-    IngestBackfill.writePreview(outputPath)
+    // ── Supplemental out-of-county temperature station ────────────────────────
+    // Lincoln Airport ASOS (USW00014939) is outside Gage County so it never
+    // appears in the CDO county query above. Fetched separately so silver has a
+    // last-resort temperature fallback when no Gage County station has TMAX/TMIN.
+    val suppId = anchor.getString("temp-supplemental-id")
+    logger.info(s"=== Fetching supplemental station $suppId ===")
+    val suppObs: Seq[RawWeatherObservation] =
+      (startYear to endYear).flatMap { year =>
+        val rangeStart = if (year == startYear) startDate.toString else s"$year-01-01"
+        val rangeEnd   = if (year == endYear)   today.toString    else s"$year-12-31"
+        logger.info(s"  $suppId / $rangeStart – $rangeEnd ...")
+        Thread.sleep(1000)
+        val rows = NoaaHistoricalBackfillJob.fetchDateRange(suppId, rangeStart, rangeEnd, dataTypes, token)
+        logger.info(s"  $suppId / $rangeStart – $rangeEnd -> ${rows.size} rows")
+        rows
+      }
+    if (suppObs.nonEmpty) {
+      spark.createDataset(suppObs).write.format("delta").mode(SaveMode.Append).save(outputPath)
+      logger.info(s"Supplemental $suppId: appended ${suppObs.size} rows")
+    } else {
+      logger.warn(s"Supplemental $suppId: no new rows fetched (NCEI archive may not include these dates yet)")
+    }
+
+    NoaaHistoricalBackfillJob.writePreview(outputPath)
   }
 
   private def listGageCountyStations(token: String, countyFips: String, startYear: Int, endYear: Int): Seq[Station] = {

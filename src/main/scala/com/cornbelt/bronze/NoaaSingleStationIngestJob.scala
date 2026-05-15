@@ -12,12 +12,12 @@ import scala.collection.JavaConverters._
  *  safe to re-run without duplicating data.
  *
  *  Usage:
- *    sbt "runMain com.cornbelt.bronze.AbridgedIngestAddStation USC00050945"
+ *    sbt "runMain com.cornbelt.bronze.NoaaSingleStationIngestJob USC00050945"
  *
  *  The station argument is the bare NCEI ID (with or without the GHCND: prefix).
  *  Defaults to USC00050945 if omitted.
  */
-object AbridgedIngestAddStation extends LazyLogging {
+object NoaaSingleStationIngestJob extends LazyLogging {
 
   private val config      = ConfigFactory.load().getConfig("corn-belt")
   private val noaaCfg     = config.getConfig("noaa")

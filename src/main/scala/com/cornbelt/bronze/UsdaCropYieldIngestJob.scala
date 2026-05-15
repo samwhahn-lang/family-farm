@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.{Dataset, SaveMode}
 import scala.collection.JavaConverters._
 
-object UsdaIngestJob extends LazyLogging {
+object UsdaCropYieldIngestJob extends LazyLogging {
 
   private val config      = ConfigFactory.load().getConfig("corn-belt")
   private val usdaCfg     = config.getConfig("usda")
@@ -38,7 +38,6 @@ object UsdaIngestJob extends LazyLogging {
     val ds: Dataset[RawCropRecord] = spark.createDataset(allRecords)
     ds.write.format("delta").mode(SaveMode.Overwrite).partitionBy("year", "state").save(outputPath)
     logger.info(s"Bronze write complete -> $outputPath")
-    spark.stop()
   }
 
   private def fetchRecords(state: String, commodity: String, statisticCat: String, startYear: Int, endYear: Int, apiKey: String): Seq[RawCropRecord] = {

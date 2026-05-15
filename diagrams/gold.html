@@ -54,9 +54,33 @@
     .c-gold{color:var(--gold)} .bg-gold{background:var(--gold-dim);border-color:var(--gold)}
     .divider{border:none;border-top:1px solid var(--border);margin:2px 0}
     .page-footer{text-align:center;padding:24px;color:var(--muted);font-size:.72rem;border-top:1px solid var(--border);margin-top:20px}
+    /* site nav */
+    .site-nav{background:var(--surface);border-bottom:2px solid var(--border);padding:8px 40px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .nav-home{padding:5px 16px;border-radius:4px;font-size:.78rem;font-weight:700;text-decoration:none;color:var(--text);background:rgba(255,255,255,.05);border:1px solid var(--border);transition:all .15s;letter-spacing:.02em}
+    .nav-home:hover{background:rgba(255,255,255,.1);border-color:var(--muted)}
+    .nav-sep{width:1px;height:20px;background:var(--border)}
+    .nav-group{display:flex;align-items:center;gap:6px}
+    .nav-group-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding-right:10px;border-right:1px solid var(--border);margin-right:2px}
+    .nav-layer{padding:5px 12px;border-radius:4px;font-size:.73rem;font-weight:600;text-decoration:none;border:1px solid;transition:all .15s;letter-spacing:.01em}
+    .nav-layer.bronze{color:#e3813a;border-color:rgba(227,129,58,.35);background:rgba(227,129,58,.07)}.nav-layer.bronze:hover,.nav-layer.bronze.active{background:rgba(227,129,58,.2);border-color:#e3813a}
+    .nav-layer.silver{color:#8b949e;border-color:rgba(139,148,158,.35);background:rgba(139,148,158,.07)}.nav-layer.silver:hover,.nav-layer.silver.active{background:rgba(139,148,158,.2);border-color:#8b949e}
+    .nav-layer.gold{color:#d4a017;border-color:rgba(212,160,23,.35);background:rgba(212,160,23,.07)}.nav-layer.gold:hover,.nav-layer.gold.active{background:rgba(212,160,23,.2);border-color:#d4a017}
+    .nav-layer.platinum{color:#bc8cff;border-color:rgba(188,140,255,.35);background:rgba(188,140,255,.07)}.nav-layer.platinum:hover,.nav-layer.platinum.active{background:rgba(188,140,255,.2);border-color:#bc8cff}
   </style>
 </head>
 <body>
+
+<nav class="site-nav">
+  <a href="../platinum/index.html" class="nav-home">Home</a>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <span class="nav-group-label">Data Architecture</span>
+    <a href="bronze.html" class="nav-layer bronze">Bronze</a>
+    <a href="silver.html" class="nav-layer silver">Silver</a>
+    <a href="gold.html" class="nav-layer gold active">Gold</a>
+    <a href="platinum.html" class="nav-layer platinum">Platinum</a>
+  </div>
+</nav>
 
 <div class="page-header">
   <div>

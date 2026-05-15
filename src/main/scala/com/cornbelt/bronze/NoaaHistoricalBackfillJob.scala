@@ -15,9 +15,9 @@ import scala.collection.JavaConverters._
  *  Run this once to seed the table, or to do a complete refresh.
  *
  *  Usage:
- *    sbt "runMain com.cornbelt.bronze.IngestBackfill"
+ *    sbt "runMain com.cornbelt.bronze.NoaaHistoricalBackfillJob"
  */
-object IngestBackfill extends LazyLogging {
+object NoaaHistoricalBackfillJob extends LazyLogging {
 
   private val config      = ConfigFactory.load().getConfig("corn-belt")
   private val noaaCfg     = config.getConfig("noaa")

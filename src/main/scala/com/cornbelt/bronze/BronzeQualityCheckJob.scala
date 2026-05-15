@@ -7,7 +7,7 @@ import org.apache.spark.sql.functions._
 import java.io.{FileOutputStream, OutputStreamWriter, PrintWriter}
 import java.nio.charset.StandardCharsets
 
-object VerifyBronzeJob extends LazyLogging {
+object BronzeQualityCheckJob extends LazyLogging {
 
   private val config   = ConfigFactory.load().getConfig("corn-belt")
   private val pathsCfg = config.getConfig("paths")
@@ -55,7 +55,5 @@ object VerifyBronzeJob extends LazyLogging {
       }.mkString("  ")
       logger.info(s"  $stationId  $year  $fields")
     }
-
-    spark.stop()
   }
 }

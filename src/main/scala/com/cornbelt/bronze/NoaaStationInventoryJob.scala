@@ -9,7 +9,7 @@ import java.io.{File, PrintWriter}
  *  then queries the NCEI API year-by-year per station to count rows.
  *  Output: data/bronze/gage_county_station_row_count.csv
  */
-object GageCountyStationsJob extends LazyLogging {
+object NoaaStationInventoryJob extends LazyLogging {
 
   private val config   = ConfigFactory.load().getConfig("corn-belt")
   private val noaaCfg  = config.getConfig("noaa")

@@ -19,8 +19,10 @@ object CustomRun extends LazyLogging {
   private case class Stage(name: String, label: String, job: () => Unit)
 
   private def stages: Seq[Stage] = Seq(
-    Stage("bronze",        "Bronze   — Ingest Backfill (2000-2026, overwrite)", () => com.cornbelt.bronze.IngestBackfill.main(Array.empty)),
-    Stage("bronze-update", "Bronze   — Ingest Update (max date to today, append)", () => com.cornbelt.bronze.IngestUpdate.main(Array.empty)),
+    Stage("bronze",        "Bronze   — NOAA Historical Backfill (2000-2026, overwrite)", () => com.cornbelt.bronze.NoaaHistoricalBackfillJob.main(Array.empty)),
+    Stage("bronze-update", "Bronze   — NOAA Incremental Update (max date to today, append)", () => com.cornbelt.bronze.NoaaIncrementalUpdateJob.main(Array.empty)),
+    Stage("bronze-usda",   "Bronze   — USDA Crop Yield Ingest",                () => com.cornbelt.bronze.UsdaCropYieldIngestJob.main(Array.empty)),
+    Stage("bronze-verify", "Bronze   — Quality Check",                         () => com.cornbelt.bronze.BronzeQualityCheckJob.main(Array.empty)),
     Stage("silver",        "Silver   — Weather Transform",                      () => com.cornbelt.silver.WeatherTransformJob.main(Array.empty)),
     Stage("gold",          "Gold     — Season Weather",                         () => com.cornbelt.gold.SeasonWeatherJob.main(Array.empty)),
     Stage("platinum",      "Platinum — Export",                                 () => com.cornbelt.platinum.PlatinumExportJob.main(Array.empty))
@@ -59,16 +61,18 @@ object CustomRun extends LazyLogging {
 
   private def printUsage(): Unit = {
     logger.info("Usage:  CustomRun <stage> [stage ...]")
-    logger.info("Stages: bronze  bronze-update  silver  gold  platinum")
+    logger.info("Stages: bronze  bronze-update  bronze-usda  bronze-verify  silver  gold  platinum")
     logger.info("")
-    logger.info("  bronze        Full backfill 2000-2026, overwrites bronze table")
-    logger.info("  bronze-update Incremental fetch from max bronze date to today, appends")
+    logger.info("  bronze         NOAA historical backfill 2000-2026, overwrites bronze table")
+    logger.info("  bronze-update  NOAA incremental fetch from max bronze date to today, appends")
+    logger.info("  bronze-usda    USDA NASS crop yield ingest, overwrites usda_crops partition")
+    logger.info("  bronze-verify  Quality check — counts non-null obs per station/year/dataType")
     logger.info("")
     logger.info("Examples:")
     logger.info("  sbt \"runMain com.cornbelt.pipeline.CustomRun bronze-update silver gold platinum\"")
     logger.info("  sbt \"runMain com.cornbelt.pipeline.CustomRun silver gold platinum\"")
-    logger.info("  sbt \"runMain com.cornbelt.pipeline.CustomRun bronze silver gold platinum\"")
+    logger.info("  sbt \"runMain com.cornbelt.pipeline.CustomRun bronze bronze-usda bronze-verify silver gold platinum\"")
     logger.info("")
-    logger.info("Stages always run in pipeline order: bronze -> bronze-update -> silver -> gold -> platinum")
+    logger.info("Stages always run in pipeline order: bronze -> bronze-update -> bronze-usda -> bronze-verify -> silver -> gold -> platinum")
   }
 }

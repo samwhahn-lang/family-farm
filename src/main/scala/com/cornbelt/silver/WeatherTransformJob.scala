@@ -116,21 +116,21 @@ object WeatherTransformJob extends LazyLogging {
           .otherwise(                    lit("OK"))
       )
       .withColumn("tempSource",
-        when(col("TMAX").isNotNull    && col("TMIN").isNotNull,    lit("anchor"))
-          .when(col("suppTMAX").isNotNull && col("suppTMIN").isNotNull, lit("supplemental"))
+        when(col("TMAX").isNotNull    && col("TMIN").isNotNull,        lit("anchor"))
           .when(col("poolTMAX").isNotNull && col("poolTMIN").isNotNull, lit("pool"))
+          .when(col("suppTMAX").isNotNull && col("suppTMIN").isNotNull, lit("supplemental"))
           .otherwise(                                                    lit("mixed"))
       )
       .withColumn("tempStationId",
-        when(col("TMAX").isNotNull,     lit(stationId))
-          .when(col("suppTMAX").isNotNull, lit(supplementalId))
+        when(col("TMAX").isNotNull,      lit(stationId))
           .when(col("poolTMAX").isNotNull, lit("pool_median"))
+          .when(col("suppTMAX").isNotNull, lit(supplementalId))
           .otherwise(lit(null).cast("string"))
       )
       .withColumn("tempStationName",
-        when(col("TMAX").isNotNull,     lit(stationName))
-          .when(col("suppTMAX").isNotNull, lit(supplementalName))
+        when(col("TMAX").isNotNull,      lit(stationName))
           .when(col("poolTMAX").isNotNull, lit("Pool Median"))
+          .when(col("suppTMAX").isNotNull, lit(supplementalName))
           .otherwise(lit(null).cast("string"))
       )
       .withColumn("date", to_date(col("date"), "yyyy-MM-dd"))
@@ -186,10 +186,10 @@ object WeatherTransformJob extends LazyLogging {
       .select(
         col("stationId"),
         col("date"),
-        (coalesce(col("TMAX"), col("suppTMAX"), col("poolTMAX")) * 9.0 / 5.0 + 32.0).alias("tempMaxF"),
-        (coalesce(col("TMIN"), col("suppTMIN"), col("poolTMIN")) * 9.0 / 5.0 + 32.0).alias("tempMinF"),
-        ((coalesce(col("TMAX"), col("suppTMAX"), col("poolTMAX")) +
-          coalesce(col("TMIN"), col("suppTMIN"), col("poolTMIN"))) / 2.0 * 9.0 / 5.0 + 32.0).alias("tempAvgF"),
+        (coalesce(col("TMAX"), col("poolTMAX"), col("suppTMAX")) * 9.0 / 5.0 + 32.0).alias("tempMaxF"),
+        (coalesce(col("TMIN"), col("poolTMIN"), col("suppTMIN")) * 9.0 / 5.0 + 32.0).alias("tempMinF"),
+        ((coalesce(col("TMAX"), col("poolTMAX"), col("suppTMAX")) +
+          coalesce(col("TMIN"), col("poolTMIN"), col("suppTMIN"))) / 2.0 * 9.0 / 5.0 + 32.0).alias("tempAvgF"),
         (col("PRCP") / 25.4).alias("precipIn"),
         (col("SNOW") / 25.4).alias("snowIn"),
         (col("SNWD") / 25.4).alias("snowDepthIn"),
