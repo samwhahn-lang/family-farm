@@ -39,14 +39,32 @@ jobs:
           restore-keys: sbt-
 
       # ── Delta Lake data directory ────────────────────────────────────────
-      # Always restores from the latest previous run, then saves a new snapshot
-      # after this run so the next run gets the freshest data.
+      # Primary: restore from Actions cache (fast, same-branch).
+      # Fallback: if cache is cold (expired/cleared), download the last known-good
+      # snapshot from the 'data-snapshot' GitHub Release so we never have to redo
+      # a 45-minute full backfill from the NOAA API.
       - name: Restore pipeline data cache
+        id: cache-data
         uses: actions/cache@v4
         with:
           path: data/
           key: pipeline-data-${{ github.run_id }}
           restore-keys: pipeline-data-
+
+      - name: Restore data from release snapshot (cache miss fallback)
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view data-snapshot --json assets -q '.assets[].name' 2>/dev/null | grep -q data.tar.gz; then
+            echo "Cache cold — restoring from data-snapshot release..."
+            gh release download data-snapshot --pattern "data.tar.gz" -D /tmp/
+            mkdir -p data
+            tar -xzf /tmp/data.tar.gz
+            echo "Data restored from release ($(du -sh data | cut -f1))."
+          else
+            echo "No release snapshot found — pipeline will backfill from NOAA API."
+          fi
 
       # ── Install sbt ──────────────────────────────────────────────────────
       - name: Install sbt
@@ -72,6 +90,24 @@ jobs:
         run: |
           echo "=== LAST 200 LINES ==="
           tail -200 /tmp/pipeline.log
+
+      # ── Upload data snapshot to GitHub Release ───────────────────────────
+      # Overwrites the 'data-snapshot' pre-release after every successful run.
+      # This is the cold-start fallback — if the Actions cache expires, the next
+      # run downloads this instead of doing a full NOAA API backfill.
+      - name: Upload data snapshot to release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tar -czf /tmp/data.tar.gz data/
+          SIZE=$(du -sh /tmp/data.tar.gz | cut -f1)
+          echo "Uploading data snapshot ($SIZE)..."
+          gh release delete data-snapshot --yes 2>/dev/null || true
+          gh release create data-snapshot /tmp/data.tar.gz \
+            --title "Data Snapshot $(date -u +%Y-%m-%d)" \
+            --notes "Bronze/Silver/Gold Delta tables — auto-updated by daily pipeline." \
+            --prerelease
 
       # ── Commit dashboard output ──────────────────────────────────────────
       - name: Commit updated dashboard
