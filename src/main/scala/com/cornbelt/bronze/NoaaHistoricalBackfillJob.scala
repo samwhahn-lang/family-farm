@@ -74,6 +74,27 @@ object NoaaHistoricalBackfillJob extends LazyLogging {
     ds.write.format("delta").mode(SaveMode.Overwrite).partitionBy("stationId").save(outputPath)
     logger.info(s"Bronze write complete -> $outputPath")
 
+    // ── Supplemental out-of-county temperature station ────────────────────────
+    // Lincoln Airport ASOS (USW00014939) is outside Gage County so it never
+    // appears in the CDO county query above. Without it, Silver has no TMAX/TMIN
+    // fallback for years after the anchor station went precip-only (~2013).
+    val suppId = anchor.getString("temp-supplemental-id")
+    logger.info(s"=== Fetching supplemental station $suppId ($startYear-$endYear) ===")
+    val suppObs: Seq[RawWeatherObservation] =
+      (startYear to endYear).flatMap { year =>
+        logger.info(s"  $suppId / $year ...")
+        Thread.sleep(1000)
+        val rows = fetchDateRange(suppId, s"$year-01-01", s"$year-12-31", dataTypes, token)
+        logger.info(s"  $suppId / $year -> ${rows.size} rows")
+        rows
+      }
+    if (suppObs.nonEmpty) {
+      spark.createDataset(suppObs).write.format("delta").mode(SaveMode.Append).save(outputPath)
+      logger.info(s"Supplemental $suppId: appended ${suppObs.size} rows")
+    } else {
+      logger.warn(s"Supplemental $suppId: no rows fetched — temperature fallback will be unavailable")
+    }
+
     writePreview(outputPath)
   }
 
