@@ -24,7 +24,14 @@ object Refresh_Full_NOAAWeather_Data extends LazyLogging {
   private def run(name: String, job: () => Unit): Unit = {
     logger.info(s"==== Starting: $name ====")
     val t0 = System.currentTimeMillis()
-    job()
+    try {
+      job()
+    } catch {
+      case e: Exception =>
+        val elapsed = (System.currentTimeMillis() - t0) / 1000
+        logger.error(s"==== FAILED: $name after ${elapsed}s — ${e.getClass.getSimpleName}: ${e.getMessage} ====")
+        throw e
+    }
     val elapsed = (System.currentTimeMillis() - t0) / 1000
     logger.info(s"==== Finished: $name (${elapsed}s) ====")
   }

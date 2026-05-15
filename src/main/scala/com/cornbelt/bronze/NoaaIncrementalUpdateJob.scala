@@ -5,8 +5,8 @@ import com.cornbelt.utils.SparkSessionProvider
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.{Dataset, SaveMode}
+import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.functions.{col, max => sparkMax}
-import java.nio.file.{Files, Paths}
 import java.time.LocalDate
 import scala.collection.JavaConverters._
 
@@ -39,23 +39,23 @@ object NoaaIncrementalUpdateJob extends LazyLogging {
     val dataTypes  = noaaCfg.getStringList("data-types").asScala.toList
     val outputPath = s"${pathsCfg.getString("bronze")}/noaa_observations"
 
-    // ── Cold-start guard: seed with full backfill if no table exists yet ─────
-    val bronzeTableExists =
-      Files.isDirectory(Paths.get(outputPath, "_delta_log"))
-
-    if (!bronzeTableExists) {
-      logger.warn(s"Bronze table not found at $outputPath — running full historical backfill to seed it.")
-      NoaaHistoricalBackfillJob.main(args)
-      return
+    // ── Find the highest date already in bronze (cold-start safe) ────────────
+    // Delta creates _delta_log eagerly, so a directory check is unreliable.
+    // Catch AnalysisException (PATH_NOT_FOUND / empty table) and fall back to
+    // a full historical backfill to seed the table on first run.
+    val maxDateStr: String = try {
+      val result = spark.read.format("delta").load(outputPath)
+        .agg(sparkMax(col("date")))
+        .collect().head.getString(0)
+      if (result == null)
+        throw new RuntimeException("Bronze table exists but contains no date data.")
+      result
+    } catch {
+      case _: AnalysisException =>
+        logger.warn(s"Bronze table not found or empty at '$outputPath' — running full historical backfill to seed it.")
+        NoaaHistoricalBackfillJob.main(args)
+        return
     }
-
-    // ── Find the highest date already in bronze ───────────────────────────────
-    val maxDateStr = spark.read.format("delta").load(outputPath)
-      .agg(sparkMax(col("date")))
-      .collect().head.getString(0)
-
-    if (maxDateStr == null)
-      throw new RuntimeException("Bronze table has no date data — run NoaaHistoricalBackfillJob first.")
 
     val maxDate   = LocalDate.parse(maxDateStr)
     val today     = LocalDate.now()
