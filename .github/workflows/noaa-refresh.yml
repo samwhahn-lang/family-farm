@@ -1,0 +1,106 @@
+name: NOAA Weather Refresh
+
+# Runs at 8pm CDT (01:00 UTC). In winter (CST = UTC-6) this is 7pm local.
+# Change to '0 2 * * *' to lock to 8pm CST year-round.
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:        # allows manual trigger from the Actions tab
+
+permissions:
+  contents: write           # needed to push platinum/index.html back to main
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90     # NOAA API + full Spark run; raise if needed
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Java ────────────────────────────────────────────────────────────────
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      # ── sbt / Ivy / Coursier cache ───────────────────────────────────────
+      - name: Cache sbt dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+          key: sbt-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/*.scala') }}
+          restore-keys: sbt-
+
+      # ── Delta Lake data directory ────────────────────────────────────────
+      # Always restores from the latest previous run, then saves a new snapshot
+      # after this run so the next run gets the freshest data.
+      - name: Restore pipeline data cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: pipeline-data-${{ github.run_id }}
+          restore-keys: pipeline-data-
+
+      # ── Install sbt ──────────────────────────────────────────────────────
+      - name: Install sbt
+        run: |
+          echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" \
+            | sudo tee /etc/apt/sources.list.d/sbt.list
+          curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" \
+            | sudo gpg --dearmor \
+            | sudo tee /etc/apt/trusted.gpg.d/scalasbt.gpg > /dev/null
+          sudo apt-get update -q
+          sudo apt-get install -y sbt
+
+      # ── Run pipeline ─────────────────────────────────────────────────────
+      - name: Run Refresh_Full_NOAAWeather_Data
+        env:
+          NOAA_TOKEN: ${{ secrets.NOAA_TOKEN }}
+        run: sbt "runMain com.cornbelt.pipeline.Refresh_Full_NOAAWeather_Data"
+
+      # ── Commit dashboard output ──────────────────────────────────────────
+      - name: Commit updated dashboard
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add platinum/index.html
+          if git diff --staged --quiet; then
+            echo "Dashboard unchanged — nothing to commit."
+          else
+            git commit -m "chore: refresh dashboard $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      # ── Email on failure ─────────────────────────────────────────────────
+      # Requires two repo secrets:
+      #   EMAIL_USERNAME     — your Gmail address (e.g. samwhahn@gmail.com)
+      #   EMAIL_APP_PASSWORD — a Gmail App Password (not your login password)
+      #   Generate one at: https://myaccount.google.com/apppasswords
+      - name: Send failure email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_APP_PASSWORD }}
+          subject: "[FAILED] NOAA Weather Refresh — ${{ github.run_id }}"
+          to: samwhahn@gmail.com
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
+          body: |
+            The NOAA weather data refresh pipeline FAILED.
+
+            Repository : ${{ github.repository }}
+            Run ID     : ${{ github.run_id }}
+            Trigger    : ${{ github.event_name }}
+            Branch     : ${{ github.ref_name }}
+
+            View logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
