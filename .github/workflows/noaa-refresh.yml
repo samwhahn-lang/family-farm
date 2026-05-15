@@ -63,7 +63,15 @@ jobs:
       - name: Run Refresh_Full_NOAAWeather_Data
         env:
           NOAA_TOKEN: ${{ secrets.NOAA_TOKEN }}
-        run: sbt "runMain com.cornbelt.pipeline.Refresh_Full_NOAAWeather_Data"
+        run: |
+          set -o pipefail
+          sbt "runMain com.cornbelt.pipeline.Refresh_Full_NOAAWeather_Data" 2>&1 | tee /tmp/pipeline.log
+
+      - name: Show log tail on failure
+        if: failure()
+        run: |
+          echo "=== LAST 200 LINES ==="
+          tail -200 /tmp/pipeline.log
 
       # ── Commit dashboard output ──────────────────────────────────────────
       - name: Commit updated dashboard

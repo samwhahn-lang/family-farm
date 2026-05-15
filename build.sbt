@@ -28,7 +28,8 @@ lazy val root = (project in file("."))
       "--add-opens=java.base/java.lang=ALL-UNNAMED",
       "--add-opens=java.base/java.util=ALL-UNNAMED",
       "-Dhadoop.home.dir=C:/hadoop",
-      "-Djava.library.path=C:/hadoop/bin"
+      "-Djava.library.path=C:/hadoop/bin",
+      "-Dlog4j2.configurationFile=log4j2.properties"
     ),
 
     assembly / assemblyMergeStrategy := {
