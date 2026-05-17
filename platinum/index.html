@@ -94,6 +94,10 @@
     .nav-layer.silver{color:var(--muted);border-color:rgba(138,122,101,.35);background:rgba(138,122,101,.07)}.nav-layer.silver:hover{background:rgba(138,122,101,.18);border-color:var(--muted)}
     .nav-layer.gold{color:var(--gold);border-color:rgba(154,115,24,.35);background:rgba(154,115,24,.07)}.nav-layer.gold:hover{background:rgba(154,115,24,.18);border-color:var(--gold)}
     .nav-layer.platinum{color:var(--accent);border-color:rgba(92,64,32,.35);background:rgba(92,64,32,.07)}.nav-layer.platinum:hover{background:rgba(92,64,32,.18);border-color:var(--accent)}
+    /* header diagram buttons */
+    .header-btns{display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .hdr-btn{padding:5px 16px;border-radius:4px;font-size:.75rem;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.35);color:#f5f0e8;background:rgba(255,255,255,.1);transition:all .15s;letter-spacing:.04em;text-transform:uppercase}
+    .hdr-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7)}
   </style>
 </head>
 <body>
@@ -114,6 +118,12 @@
   <p style="margin-top:6px;font-size:1.05rem;opacity:.92;letter-spacing:.01em">
     Local temperature: <strong>62.5°F</strong> &nbsp;&middot;&nbsp; as of Wednesday, May 13, 2026
   </p>
+  <div class="header-btns">
+    <a href="../diagrams/bronze.html" class="hdr-btn">Bronze</a>
+    <a href="../diagrams/silver.html" class="hdr-btn">Silver</a>
+    <a href="../diagrams/gold.html" class="hdr-btn">Gold</a>
+    <a href="../diagrams/platinum.html" class="hdr-btn">Platinum</a>
+  </div>
 </header>
 <div class="main">
 
