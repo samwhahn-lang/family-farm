@@ -1,0 +1,114 @@
+name: Delete Bronze Month (Test Utility)
+
+# Ad-hoc only — never runs on a schedule.
+# Use this to wipe a specific month from the bronze Delta table so you can
+# verify the NOAA refresh job re-fetches it correctly on the next run.
+on:
+  workflow_dispatch:
+    inputs:
+      year_month:
+        description: 'Month to delete from bronze (YYYY-MM), e.g. 2026-05'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  delete-month:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── Validate input ───────────────────────────────────────────────────────
+      - name: Validate year_month format
+        run: |
+          if [[ ! "${{ github.event.inputs.year_month }}" =~ ^[0-9]{4}-[0-9]{2}$ ]]; then
+            echo "ERROR: year_month must be in YYYY-MM format (e.g. 2026-05)"
+            exit 1
+          fi
+          echo "Deleting bronze rows for: ${{ github.event.inputs.year_month }}"
+
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Java ─────────────────────────────────────────────────────────────────
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      # ── sbt dependency cache ─────────────────────────────────────────────────
+      - name: Cache sbt dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+          key: sbt-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/*.scala') }}
+          restore-keys: sbt-
+
+      # ── Restore data (cache first, release snapshot fallback) ─────────────
+      - name: Restore pipeline data cache
+        id: cache-data
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: pipeline-data-${{ github.run_id }}
+          restore-keys: pipeline-data-
+
+      - name: Restore data from release snapshot (cache miss fallback)
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view data-snapshot --json assets -q '.assets[].name' 2>/dev/null | grep -q data.tar.gz; then
+            echo "Cache cold — restoring from data-snapshot release..."
+            gh release download data-snapshot --pattern "data.tar.gz" -D /tmp/
+            mkdir -p data
+            tar -xzf /tmp/data.tar.gz
+            echo "Data restored from release ($(du -sh data | cut -f1))."
+          else
+            echo "ERROR: No data-snapshot release found. Run the NOAA Weather Refresh job first."
+            exit 1
+          fi
+
+      # ── Install sbt ──────────────────────────────────────────────────────────
+      - name: Install sbt
+        run: |
+          echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" \
+            | sudo tee /etc/apt/sources.list.d/sbt.list
+          curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" \
+            | sudo gpg --dearmor \
+            | sudo tee /etc/apt/trusted.gpg.d/scalasbt.gpg > /dev/null
+          sudo apt-get update -q
+          sudo apt-get install -y sbt
+
+      # ── Run DeleteMonthJob ───────────────────────────────────────────────────
+      - name: Delete ${{ github.event.inputs.year_month }} from bronze
+        run: |
+          set -o pipefail
+          sbt "runMain com.cornbelt.bronze.DeleteMonthJob ${{ github.event.inputs.year_month }}" \
+            2>&1 | tee /tmp/delete.log
+
+      - name: Show log tail on failure
+        if: failure()
+        run: tail -100 /tmp/delete.log
+
+      # ── Update data snapshot so the next refresh runs incrementally ──────────
+      - name: Update data snapshot release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tar -czf /tmp/data.tar.gz data/
+          SIZE=$(du -sh /tmp/data.tar.gz | cut -f1)
+          echo "Uploading updated snapshot ($SIZE) — ${{ github.event.inputs.year_month }} removed..."
+          gh release delete data-snapshot --yes 2>/dev/null || true
+          gh release create data-snapshot /tmp/data.tar.gz \
+            --title "Data Snapshot $(date -u +%Y-%m-%d) [${{ github.event.inputs.year_month }} deleted]" \
+            --notes "Bronze Delta tables with ${{ github.event.inputs.year_month }} removed. Next refresh will re-fetch that month." \
+            --prerelease
