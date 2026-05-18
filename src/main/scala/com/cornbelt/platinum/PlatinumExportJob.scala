@@ -188,7 +188,7 @@ object PlatinumExportJob extends LazyLogging {
     .month-btn.on{background:var(--sky)!important;border-color:var(--sky)!important}
     /* month grid */
     .month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
-    .month-grid button{text-align:center}
+    .month-grid button{text-align:center;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer;font-size:.73rem;color:var(--muted);transition:all .1s}
     /* chips */
     .chips{display:flex;flex-direction:column;gap:5px}
     .chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:3px;border:1px solid;cursor:pointer;font-size:.75rem;font-weight:600;user-select:none;transition:all .1s}
@@ -216,15 +216,48 @@ object PlatinumExportJob extends LazyLogging {
     #metricTip{position:fixed;display:none;background:#2b1f0e;color:#f5f0e8;padding:10px 13px;border-radius:5px;font-size:.72rem;line-height:1.55;width:260px;z-index:1000;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.35)}
     #metricTip strong{display:block;font-size:.78rem;margin-bottom:5px;color:#d4a830}
     #metricTip .formula{font-family:monospace;font-size:.68rem;background:rgba(255,255,255,.1);padding:3px 6px;border-radius:3px;margin:4px 0;display:block}
+    /* site nav */
+    .site-nav{background:var(--card);border-bottom:2px solid var(--border);padding:8px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .nav-current{padding:5px 16px;border-radius:4px;font-size:.78rem;font-weight:700;color:var(--accent);background:#f9f5ee;border:1px solid var(--border);letter-spacing:.02em}
+    .nav-sep{width:1px;height:20px;background:var(--border)}
+    .nav-group{display:flex;align-items:center;gap:6px}
+    .nav-group-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding-right:10px;border-right:1px solid var(--border);margin-right:2px}
+    .nav-layer{padding:5px 12px;border-radius:4px;font-size:.73rem;font-weight:600;text-decoration:none;border:1px solid;transition:all .15s;letter-spacing:.01em}
+    .nav-layer.bronze{color:#c96827;border-color:rgba(201,104,39,.35);background:rgba(201,104,39,.07)}.nav-layer.bronze:hover{background:rgba(201,104,39,.18);border-color:#c96827}
+    .nav-layer.silver{color:var(--muted);border-color:rgba(138,122,101,.35);background:rgba(138,122,101,.07)}.nav-layer.silver:hover{background:rgba(138,122,101,.18);border-color:var(--muted)}
+    .nav-layer.gold{color:var(--gold);border-color:rgba(154,115,24,.35);background:rgba(154,115,24,.07)}.nav-layer.gold:hover{background:rgba(154,115,24,.18);border-color:var(--gold)}
+    .nav-layer.platinum{color:var(--accent);border-color:rgba(92,64,32,.35);background:rgba(92,64,32,.07)}.nav-layer.platinum:hover{background:rgba(92,64,32,.18);border-color:var(--accent)}
+    /* header diagram buttons */
+    .header-btns{display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .hdr-btn{padding:5px 16px;border-radius:4px;font-size:.75rem;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.35);color:#f5f0e8;background:rgba(255,255,255,.1);transition:all .15s;letter-spacing:.04em;text-transform:uppercase}
+    .hdr-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7)}
   </style>
 </head>
 <body>
+<nav class="site-nav">
+  <span class="nav-current">&#8962; Home</span>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <span class="nav-group-label">Data Architecture</span>
+    <a href="../diagrams/bronze.html" class="nav-layer bronze">Bronze</a>
+    <a href="../diagrams/silver.html" class="nav-layer silver">Silver</a>
+    <a href="../diagrams/gold.html" class="nav-layer gold">Gold</a>
+    <a href="../diagrams/platinum.html" class="nav-layer platinum">Platinum</a>
+  </div>
+</nav>
 <header class="header">
   <h1>Gage County Crop Analysis</h1>
   <p>Beatrice, Nebraska</p>
   <p style="margin-top:6px;font-size:1.05rem;opacity:.92;letter-spacing:.01em">
     Local temperature: <strong>$latestTempStr</strong> &nbsp;&middot;&nbsp; as of $latestDateStr
   </p>
+  <div class="header-btns">
+    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.7;align-self:center">Data Architecture</span>
+    <a href="../diagrams/bronze.html" class="hdr-btn">Bronze</a>
+    <a href="../diagrams/silver.html" class="hdr-btn">Silver</a>
+    <a href="../diagrams/gold.html" class="hdr-btn">Gold</a>
+    <a href="../diagrams/platinum.html" class="hdr-btn">Platinum</a>
+  </div>
 </header>
 <div class="main">
 
