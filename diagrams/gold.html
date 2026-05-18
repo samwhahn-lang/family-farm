@@ -88,7 +88,7 @@
 <div class="page-header">
   <div>
     <h1><span class="layer-pill">Gold</span> Data Pipeline &mdash; Architecture Diagram</h1>
-    <div class="meta">Corn Belt Weather &middot; Gage County NE (FIPS 31067) &middot; Growing season aggregates &middot; 2026-05-08</div>
+    <div class="meta">Corn Belt Weather &middot; Gage County NE (FIPS 31067) &middot; Growing season aggregates &middot; 2026-05-18</div>
   </div>
   <div class="meta" style="text-align:right">
     Midwest Crop Analysis<br>
@@ -123,20 +123,32 @@
           <span class="field-type">LocalDate</span>
         </div>
         <div class="field-row">
-          <span class="field-key">tempMaxC</span>
-          <span class="field-type">Option[Double]</span>
+          <span class="field-key">tempMaxF</span>
+          <span class="field-type">Option[Double] °F</span>
         </div>
         <div class="field-row">
-          <span class="field-key">tempMinC</span>
-          <span class="field-type">Option[Double]</span>
+          <span class="field-key">tempMinF</span>
+          <span class="field-type">Option[Double] °F</span>
         </div>
         <div class="field-row">
-          <span class="field-key">precipMm</span>
-          <span class="field-type">Option[Double]</span>
+          <span class="field-key">tempAvgF</span>
+          <span class="field-type">Option[Double] °F</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">precipIn</span>
+          <span class="field-type">Option[Double] in</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">snowIn</span>
+          <span class="field-type">Option[Double] in</span>
         </div>
         <div class="field-row">
           <span class="field-key">qualityFlag</span>
           <span class="field-type">String</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">crop phase flags</span>
+          <span class="field-type">9 Boolean</span>
         </div>
       </div>
       <hr class="divider">
@@ -179,12 +191,9 @@
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">3</div>
-          <div class="step-text">Growing season: <code>month between 4 and 11</code> (Apr&ndash;Nov)</div>
+          <div class="step-text"><code>tempMaxF isNotNull</code> AND <code>tempMinF isNotNull</code> (GDD requires both)</div>
         </div>
-        <div class="logic-step">
-          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">4</div>
-          <div class="step-text"><code>tempMaxC isNotNull</code> AND <code>tempMinC isNotNull</code> (GDD requires both)</div>
-        </div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Month restriction applied per-metric inside aggregations (not as a pre-filter), so crop-specific flags spanning different windows can share one groupBy.</div>
       </div>
       <hr class="divider">
       <div>
@@ -217,39 +226,55 @@
         <div class="section-label">GDD formula (per day)</div>
         <div class="formula-block">
           <span class="hl">max</span>(<span class="val">0</span>,<br>
-          &nbsp;(<span class="hl">min</span>(TMAX, <span class="val">30</span>) +<br>
-          &nbsp;&nbsp;<span class="hl">max</span>(TMIN, <span class="val">10</span>))<br>
-          &nbsp;/ <span class="val">2</span> - <span class="val">10</span>)
+          &nbsp;(<span class="hl">min</span>(TMAX, <span class="val">86</span>) +<br>
+          &nbsp;&nbsp;<span class="hl">max</span>(TMIN, <span class="val">50</span>))<br>
+          &nbsp;/ <span class="val">2</span> - <span class="val">50</span>)
         </div>
-        <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Base 10°C &middot; TMAX capped 30°C (corn plateau)</div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Base 50°F &middot; TMAX capped 86°F (corn plateau) &middot; tempMaxF / tempMinF</div>
       </div>
       <hr class="divider">
       <div>
         <div class="section-label">Annual aggregates (groupBy year)</div>
         <div class="field-row">
-          <span class="field-key">GDD</span>
-          <span class="field-val c-gold">sum(gdd)</span>
+          <span class="field-key">growingDegreeDays</span>
+          <span class="field-val c-gold">sum(gdd) Apr–Nov</span>
         </div>
         <div class="field-row">
-          <span class="field-key">precipMm</span>
-          <span class="field-val c-gold">sum(coalesce(prcp,0))</span>
+          <span class="field-key">totalPrecipIn</span>
+          <span class="field-val c-gold">sum(coalesce(precipIn,0))</span>
         </div>
         <div class="field-row">
-          <span class="field-key">frostFree</span>
-          <span class="field-val c-gold">count(tempMinC &gt; 0)</span>
+          <span class="field-key">frostFreeDays</span>
+          <span class="field-val c-gold">count(tempMinF &gt; 32)</span>
         </div>
         <div class="field-row">
-          <span class="field-key">heatDays</span>
-          <span class="field-val c-gold">count(tempMaxC &gt; 35)</span>
+          <span class="field-key">extremeHeatDays</span>
+          <span class="field-val c-gold">count(tempMaxF &gt; 95)</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">avgTempF</span>
+          <span class="field-val c-gold">avg(tempAvgF) Apr–Nov</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">totalSnowIn</span>
+          <span class="field-val c-gold">sum(coalesce(snowIn,0))</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Crop phase breakdowns (per crop &times; phase)</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.6">
+          GDD, precipIn, avgTempF, snowIn, frostFreeDays, heatStressDays, droughtIndex computed for each of 9 crop&times;phase combinations (corn / soybean / wheat &times; planting / growing / harvest).<br>
+          Same metrics computed for all 12 calendar months.
         </div>
       </div>
       <hr class="divider">
       <div>
         <div class="section-label">Drought index</div>
         <div style="font-size:.65rem;color:var(--muted);line-height:1.6">
-          <code style="font-size:.62rem">(yearPrecip - meanPrecip) / meanPrecip</code><br>
-          Unbounded window &mdash; mean across all years in dataset.<br>
-          &lt; 0 = drier; &gt; 0 = wetter than average.
+          <code style="font-size:.62rem">(windowPrecip - meanPrecip) / meanPrecip</code><br>
+          Computed for every precip window (general season, each crop&times;phase, each month).<br>
+          Unbounded window &mdash; mean across all years in dataset.
         </div>
       </div>
     </div>
@@ -274,38 +299,31 @@
     </div>
     <div class="card-body">
       <div>
-        <div class="section-label">Case class fields</div>
-        <div class="field-row">
-          <span class="field-key">year</span>
-          <span class="field-type">Int</span>
+        <div class="section-label">General season fields</div>
+        <div class="field-row"><span class="field-key">year</span><span class="field-type">Int</span></div>
+        <div class="field-row"><span class="field-key">countyFips</span><span class="field-type">String — 31067</span></div>
+        <div class="field-row"><span class="field-key">stateCode</span><span class="field-type">String — NE</span></div>
+        <div class="field-row"><span class="field-key">growingDegreeDays</span><span class="field-type">Double</span></div>
+        <div class="field-row"><span class="field-key">totalPrecipIn</span><span class="field-type">Double in</span></div>
+        <div class="field-row"><span class="field-key">frostFreeDays</span><span class="field-type">Int</span></div>
+        <div class="field-row"><span class="field-key">extremeHeatDays</span><span class="field-type">Int</span></div>
+        <div class="field-row"><span class="field-key">droughtIndex</span><span class="field-type">Double</span></div>
+        <div class="field-row"><span class="field-key">avgTempF</span><span class="field-type">Double °F</span></div>
+        <div class="field-row"><span class="field-key">totalSnowIn</span><span class="field-type">Double in</span></div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Crop &times; phase fields (×9)</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.6">
+          For each of corn / soybean / wheat &times; planting / growing / harvest:<br>
+          <span class="badge" style="font-size:.6rem">Gdd</span><span class="badge" style="font-size:.6rem">PrecipIn</span><span class="badge" style="font-size:.6rem">AvgTempF</span><span class="badge" style="font-size:.6rem">SnowIn</span><span class="badge" style="font-size:.6rem">FrostFreeDays</span><span class="badge" style="font-size:.6rem">HeatStressDays</span><span class="badge" style="font-size:.6rem">DroughtIndex</span>
         </div>
-        <div class="field-row">
-          <span class="field-key">countyFips</span>
-          <span class="field-type">String &mdash; 31067</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">stateCode</span>
-          <span class="field-type">String &mdash; NE</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">growingDegreeDays</span>
-          <span class="field-type">Double</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">totalPrecipMm</span>
-          <span class="field-type">Double</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">frostFreeDays</span>
-          <span class="field-type">Int</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">extremeHeatDays</span>
-          <span class="field-type">Int</span>
-        </div>
-        <div class="field-row">
-          <span class="field-key">droughtIndex</span>
-          <span class="field-type">Double</span>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Calendar month fields (×12)</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.6">
+          For Jan–Dec: Gdd, PrecipIn, AvgTempF, SnowIn, FrostFreeDays, HeatStressDays, DroughtIndex
         </div>
       </div>
       <hr class="divider">
@@ -313,7 +331,7 @@
         <div class="section-label">Granularity</div>
         <div class="field-row">
           <span class="field-key">one row per year</span>
-          <span class="field-val c-green">2000&ndash;2012</span>
+          <span class="field-val c-green">2000&ndash;present</span>
         </div>
       </div>
     </div>
@@ -378,7 +396,7 @@
 </div>
 
 <div class="page-footer">
-  Stage 3 of 4 &middot; 2026-05-08 &middot;
+  Stage 3 of 4 &middot; 2026-05-18 &middot;
   Prev: <strong>Silver &rarr; WeatherTransformJob</strong> &nbsp;&middot;&nbsp;
   Next: <strong>Platinum &rarr; PlatinumExportJob</strong>
 </div>

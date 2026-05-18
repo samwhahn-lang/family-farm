@@ -86,7 +86,7 @@
 <div class="page-header">
   <div>
     <h1><span class="layer-pill">Bronze</span> Data Pipeline &mdash; Architecture Diagram</h1>
-    <div class="meta">Corn Belt Weather &middot; All Gage County GHCND Stations &middot; FIPS 31067 &middot; 2026-05-08</div>
+    <div class="meta">Corn Belt Weather &middot; All Gage County GHCND Stations + Supplemental ASOS &middot; FIPS 31067 &middot; 2026-05-18</div>
   </div>
   <div class="meta" style="text-align:right">
     Midwest Crop Analysis<br>
@@ -218,8 +218,8 @@
     <div class="card-header bg-orange" style="border-bottom-color:rgba(227,129,58,.3)">
       <div class="icon" style="background:rgba(227,129,58,.2)">&#9654;</div>
       <div>
-        <div class="title c-orange">NoaaIngestJob</div>
-        <div class="sub">com.cornbelt.bronze</div>
+        <div class="title c-orange">NoaaHistoricalBackfillJob</div>
+        <div class="sub">com.cornbelt.bronze &middot; + NoaaIncrementalUpdateJob</div>
       </div>
     </div>
     <div class="card-body">
@@ -236,23 +236,36 @@
       </div>
       <hr class="divider">
       <div>
-        <div class="section-label">Fetch loop</div>
+        <div class="section-label">Fetch loop (backfill)</div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(227,129,58,.2);color:var(--orange)">1</div>
           <div class="step-text">Discover all Gage County stations via CDO</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(227,129,58,.2);color:var(--orange)">2</div>
-          <div class="step-text">For each station &times; year, fetch NCEI (no pagination — full year in one response)</div>
+          <div class="step-text">For each station &times; year, fetch NCEI; <code>1000ms</code> sleep between requests</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(227,129,58,.2);color:var(--orange)">3</div>
-          <div class="step-text">Sleep <code>1000ms</code> between requests</div>
+          <div class="step-text">Write all Gage County rows <code>SaveMode.Overwrite</code></div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(227,129,58,.2);color:var(--orange)">4</div>
-          <div class="step-text">Unpivot wide JSON &rarr; 5 long-format rows per day</div>
+          <div class="step-text">Fetch supplemental ASOS station year-by-year; <code>SaveMode.Append</code></div>
         </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(227,129,58,.2);color:var(--orange)">5</div>
+          <div class="step-text">Unpivot wide JSON &rarr; long format (1 row per field per day)</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Supplemental ASOS station</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">id</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--orange)">USW00014939 (Lincoln Airport)</span>
+        </div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">Outside Gage County &mdash; provides TMAX/TMIN fallback after anchor went precip-only (~2013)</div>
       </div>
       <hr class="divider">
       <div>
@@ -357,8 +370,9 @@
         </div>
         <div class="field-row">
           <span class="field-key">write mode</span>
-          <span class="field-val c-teal">Overwrite</span>
+          <span class="field-val c-teal">Overwrite + Append</span>
         </div>
+        <div style="font-size:.63rem;color:var(--muted);margin-top:2px">Gage County stations: Overwrite &middot; Supplemental ASOS: Append</div>
       </div>
       <hr class="divider">
       <div>
@@ -369,7 +383,7 @@
         </div>
         <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
           <span class="field-key">partition path</span>
-          <span class="field-val" style="font-size:.62rem;color:var(--muted)">stationId=GHCND%3A...</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">stationId=GHCND%3A... / stationId=USW...</span>
         </div>
       </div>
       <hr class="divider">
@@ -387,7 +401,7 @@
 </div>
 
 <div class="page-footer">
-  Stage 1 of 4 &middot; 2026-05-08 &middot;
+  Stage 1 of 4 &middot; 2026-05-18 &middot;
   Next stage: <strong>Silver &rarr; WeatherTransformJob</strong>
 </div>
 

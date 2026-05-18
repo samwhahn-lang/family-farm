@@ -84,7 +84,7 @@
 <div class="page-header">
   <div>
     <h1><span class="layer-pill">Silver</span> Data Pipeline &mdash; Architecture Diagram</h1>
-    <div class="meta">Corn Belt Weather &middot; Station GHCND:USC00250622 &middot; Quality-validated wide format &middot; 2026-05-08</div>
+    <div class="meta">Corn Belt Weather &middot; Anchor + Supplemental + Pool Median fallback &middot; US customary units &middot; 2026-05-18</div>
   </div>
   <div class="meta" style="text-align:right">
     Midwest Crop Analysis<br>
@@ -137,10 +137,9 @@
       </div>
       <hr class="divider">
       <div>
-        <div class="section-label">Filter applied</div>
-        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
-          <span class="field-key">stationId ==</span>
-          <span class="field-val" style="font-size:.63rem;color:var(--orange)">GHCND:USC00250622</span>
+        <div class="section-label">Usage in transform</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.6">
+          Full pool loaded. Anchor <code style="font-size:.62rem">GHCND:USC00250622</code> used for quality flagging and pivot. All stations contribute to pool median. Supplemental <code style="font-size:.62rem">USW00014939</code> provides TMAX/TMIN fallback.
         </div>
       </div>
     </div>
@@ -228,34 +227,42 @@
         <div class="section-label">Transform steps</div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">1</div>
-          <div class="step-text">Filter bronze to anchor station</div>
+          <div class="step-text">Load full bronze pool; split into anchor, supplemental, and all-station views</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">2</div>
-          <div class="step-text">Parse attributes &rarr; <code>suspect</code> boolean per row</div>
+          <div class="step-text">Compute pool median TMAX/TMIN via <code>percentile_approx</code> across all stations by date</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">3</div>
-          <div class="step-text">Aggregate quality per <code>stationId / date</code></div>
+          <div class="step-text">Parse anchor attributes &rarr; <code>suspect</code> boolean; aggregate quality per <code>stationId / date</code></div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">4</div>
-          <div class="step-text">Pivot <code>dataType</code> long &rarr; wide (<code>first(value)</code>)</div>
+          <div class="step-text">Pivot anchor long &rarr; wide (TMAX, TMIN, PRCP, SNOW, SNWD)</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">5</div>
-          <div class="step-text">Join quality, derive <code>qualityFlag</code></div>
+          <div class="step-text">Pivot supplemental &rarr; wide (TMAX, TMIN only)</div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">6</div>
-          <div class="step-text">Parse date String &rarr; <code>LocalDate</code> (<code>yyyy-MM-dd</code>)</div>
+          <div class="step-text">Left-join anchor + supplemental + pool medians on <code>date</code></div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">7</div>
-          <div class="step-text">Derive <code>month</code> (1&ndash;12) and <code>season</code> from date</div>
+          <div class="step-text">Apply 3-level TMAX/TMIN: <code>coalesce(anchor, poolMedian, supplemental)</code>; derive <code>tempSource</code> / <code>tempStationId</code></div>
         </div>
         <div class="logic-step">
           <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">8</div>
+          <div class="step-text">Convert metric &rarr; US customary: <code>°C × 9/5 + 32 = °F</code>; <code>mm / 25.4 = in</code></div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">9</div>
+          <div class="step-text">Parse date String &rarr; <code>DateType</code>; derive <code>month</code> and <code>season</code></div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(56,139,253,.2);color:var(--blue)">10</div>
           <div class="step-text">Compute 9 Boolean crop phase flags (corn / soybean / wheat &times; planting / growing / harvest)</div>
         </div>
       </div>
@@ -284,13 +291,16 @@
         <div class="section-label">Core fields</div>
         <div class="field-row"><span class="field-key">stationId</span><span class="field-type">String</span></div>
         <div class="field-row"><span class="field-key">date</span><span class="field-type">LocalDate</span></div>
-        <div class="field-row"><span class="field-key">tempMaxC</span><span class="field-type">Option[Double] °C</span></div>
-        <div class="field-row"><span class="field-key">tempMinC</span><span class="field-type">Option[Double] °C</span></div>
-        <div class="field-row"><span class="field-key">precipMm</span><span class="field-type">Option[Double] mm</span></div>
-        <div class="field-row"><span class="field-key">snowMm</span><span class="field-type">Option[Double] mm</span></div>
-        <div class="field-row"><span class="field-key">snowDepthMm</span><span class="field-type">Option[Double] mm</span></div>
+        <div class="field-row"><span class="field-key">tempMaxF</span><span class="field-type">Option[Double] °F</span></div>
+        <div class="field-row"><span class="field-key">tempMinF</span><span class="field-type">Option[Double] °F</span></div>
+        <div class="field-row"><span class="field-key">tempAvgF</span><span class="field-type">Option[Double] °F</span></div>
+        <div class="field-row"><span class="field-key">precipIn</span><span class="field-type">Option[Double] in</span></div>
+        <div class="field-row"><span class="field-key">snowIn</span><span class="field-type">Option[Double] in</span></div>
+        <div class="field-row"><span class="field-key">snowDepthIn</span><span class="field-type">Option[Double] in</span></div>
         <div class="field-row"><span class="field-key">qualityFlag</span><span class="field-type">String</span></div>
         <div class="field-row"><span class="field-key">tempSource</span><span class="field-type">String</span></div>
+        <div class="field-row"><span class="field-key">tempStationId</span><span class="field-type">Option[String]</span></div>
+        <div class="field-row"><span class="field-key">tempStationName</span><span class="field-type">Option[String]</span></div>
       </div>
       <hr class="divider">
       <div>
@@ -319,6 +329,16 @@
         <div class="field-row"><span class="field-key">wheatGrowing</span><span class="field-type">Sep 20 &ndash; Jun 30*</span></div>
         <div class="field-row"><span class="field-key">wheatHarvest</span><span class="field-type">Jun 1 &ndash; Jul 10</span></div>
         <div style="font-size:.63rem;color:var(--muted);margin-top:4px">* overwinters &mdash; wraps calendar year</div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">tempSource values</div>
+        <div>
+          <span class="badge" style="color:var(--green)">anchor</span>
+          <span class="badge" style="color:var(--blue)">pool</span>
+          <span class="badge" style="color:var(--purple)">supplemental</span>
+          <span class="badge" style="color:var(--muted)">mixed</span>
+        </div>
       </div>
       <hr class="divider">
       <div>
@@ -383,9 +403,9 @@
       </div>
       <hr class="divider">
       <div>
-        <div class="section-label">Known limitation</div>
+        <div class="section-label">Temperature fallback</div>
         <div style="font-size:.68rem;color:var(--muted);line-height:1.5">
-          USC00250622 is precip-only after Mar 2013. TMAX/TMIN null for 2013+, so Gold covers 2000&ndash;2012 only.
+          USC00250622 is precip-only after ~2013. Gaps filled first by pool median across all bronze stations, then by supplemental ASOS USW00014939 (Lincoln Airport), enabling full year coverage 2000&ndash;present.
         </div>
       </div>
     </div>
@@ -395,7 +415,7 @@
 </div>
 
 <div class="page-footer">
-  Stage 2 of 4 &middot; 2026-05-08 &middot;
+  Stage 2 of 4 &middot; 2026-05-18 &middot;
   Prev: <strong>Bronze &rarr; NoaaIngestJob</strong> &nbsp;&middot;&nbsp;
   Next: <strong>Gold &rarr; SeasonWeatherJob</strong>
 </div>

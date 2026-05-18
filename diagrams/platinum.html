@@ -85,7 +85,7 @@
 <div class="page-header">
   <div>
     <h1><span class="layer-pill">Platinum</span> Data Pipeline &mdash; Architecture Diagram</h1>
-    <div class="meta">Corn Belt Weather &middot; Self-contained Plotly.js HTML dashboard &middot; 2026-05-08</div>
+    <div class="meta">Corn Belt Weather &middot; Self-contained Plotly.js HTML dashboard &middot; 2026-05-18</div>
   </div>
   <div class="meta" style="text-align:right">
     Midwest Crop Analysis<br>
@@ -114,7 +114,7 @@
       </div>
       <hr class="divider">
       <div>
-        <div class="section-label">Fields consumed</div>
+        <div class="section-label">Key fields consumed</div>
         <div class="field-row">
           <span class="field-key">year</span>
           <span class="field-type">Int</span>
@@ -124,8 +124,12 @@
           <span class="field-type">Double</span>
         </div>
         <div class="field-row">
-          <span class="field-key">totalPrecipMm</span>
-          <span class="field-type">Double</span>
+          <span class="field-key">totalPrecipIn</span>
+          <span class="field-type">Double in</span>
+        </div>
+        <div class="field-row">
+          <span class="field-key">avgTempF</span>
+          <span class="field-type">Double °F</span>
         </div>
         <div class="field-row">
           <span class="field-key">frostFreeDays</span>
@@ -138,6 +142,10 @@
         <div class="field-row">
           <span class="field-key">droughtIndex</span>
           <span class="field-type">Double</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">crop &times; phase metrics</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">9 crop/phase + 12 month breakdowns</span>
         </div>
       </div>
       <hr class="divider">
@@ -226,11 +234,11 @@
         </div>
         <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
           <span class="field-key">left axis</span>
-          <span class="field-val" style="font-size:.62rem;color:var(--muted)">GDD / frost days / heat days</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">GDD / frost days / heat days / avg temp °F</span>
         </div>
         <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
           <span class="field-key">right axis</span>
-          <span class="field-val" style="font-size:.62rem;color:var(--muted)">precip / drought index</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">precip (in) / drought index / snow (in)</span>
         </div>
       </div>
       <hr class="divider">
@@ -284,7 +292,8 @@
     <div class="card-body">
       <div>
         <div class="section-label">Metrics tracked</div>
-        <div><span class="badge">GDD</span><span class="badge">Precip</span></div>
+        <div><span class="badge">GDD</span><span class="badge">Precip (in)</span></div>
+        <div style="margin-top:4px"><span class="badge">Avg Temp °F</span><span class="badge">Snow (in)</span></div>
         <div style="margin-top:4px"><span class="badge">Frost-Free Days</span></div>
         <div style="margin-top:4px"><span class="badge">Heat Stress Days</span><span class="badge">Drought Index</span></div>
       </div>
@@ -366,7 +375,7 @@
 </div>
 
 <div class="page-footer">
-  Stage 4 of 4 &middot; 2026-05-08 &middot;
+  Stage 4 of 4 &middot; 2026-05-18 &middot;
   Prev: <strong>Gold &rarr; SeasonWeatherJob</strong> &nbsp;&middot;&nbsp;
   Output: <strong>platinum/index.html</strong>
 </div>
