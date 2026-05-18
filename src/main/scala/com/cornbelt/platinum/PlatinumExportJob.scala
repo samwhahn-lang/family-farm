@@ -136,7 +136,7 @@ object PlatinumExportJob extends LazyLogging {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gage County Crop Analysis</title>
+  <title>Hahn Family Farm Dashboard</title>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
   <style>
     :root{
@@ -246,8 +246,8 @@ object PlatinumExportJob extends LazyLogging {
   </div>
 </nav>
 <header class="header">
-  <h1>Gage County Crop Analysis</h1>
-  <p>Beatrice, Nebraska</p>
+  <h1>Hahn Family Farm Dashboard</h1>
+  <p>Gage County &mdash; Beatrice, Nebraska</p>
   <p style="margin-top:6px;font-size:1.05rem;opacity:.92;letter-spacing:.01em">
     Local temperature: <strong>$latestTempStr</strong> &nbsp;&middot;&nbsp; as of $latestDateStr
   </p>
@@ -259,6 +259,9 @@ object PlatinumExportJob extends LazyLogging {
     <a href="../diagrams/platinum.html" class="hdr-btn">Platinum</a>
   </div>
 </header>
+<div style="background:#f9f5ee;border-bottom:1px solid var(--border);padding:10px 28px;text-align:center;font-size:.8rem;color:var(--muted);font-style:italic;letter-spacing:.01em">
+  <strong style="font-style:normal;color:var(--accent)">Mission:</strong> Bringing data analytics, science, and engineering to the Hahn family farm and celebrating the spirit of the Hahn family traditions.
+</div>
 <div class="main">
 
   <!-- ── SIDEBAR ─────────────────────────────── -->
