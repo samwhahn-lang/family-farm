@@ -98,6 +98,34 @@ jobs:
         if: failure()
         run: tail -100 /tmp/delete.log
 
+      # ── Re-run silver → gold → platinum so the dashboard reflects the deletion ─
+      # Without this step the dashboard still shows the deleted month because
+      # platinum/index.html was generated from pre-deletion data.
+      - name: Rebuild silver, gold, platinum
+        env:
+          NOAA_TOKEN: ${{ secrets.NOAA_TOKEN }}
+        run: |
+          set -o pipefail
+          sbt "runMain com.cornbelt.pipeline.CustomRun silver gold platinum" \
+            2>&1 | tee /tmp/rebuild.log
+
+      - name: Show rebuild log tail on failure
+        if: failure()
+        run: tail -100 /tmp/rebuild.log
+
+      # ── Commit the updated dashboard ─────────────────────────────────────────
+      - name: Commit updated dashboard
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add platinum/index.html
+          if git diff --staged --quiet; then
+            echo "Dashboard unchanged."
+          else
+            git commit -m "chore: rebuild dashboard after deleting ${{ github.event.inputs.year_month }} from bronze"
+            git push
+          fi
+
       # ── Update data snapshot so the next refresh runs incrementally ──────────
       - name: Update data snapshot release
         if: success()
