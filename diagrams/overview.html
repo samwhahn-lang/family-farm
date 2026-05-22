@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medallion Architecture — Overview</title>
+  <style>
+    :root {
+      --bg:#f5f0e8; --card:#ffffff; --border:#e2d6c4; --text:#2b1f0e; --muted:#8a7a65;
+      --accent:#5c4020; --gold:#9a7318; --shadow:0 2px 8px rgba(0,0,0,.10);
+      --blue:#1a6fe0; --blue-dim:rgba(26,111,224,.10);
+      --orange:#c96827; --orange-dim:rgba(201,104,39,.10);
+      --green:#2a7a35; --green-dim:rgba(42,122,53,.10);
+      --teal:#1a8a85; --teal-dim:rgba(26,138,133,.10);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+    /* site nav */
+    .site-nav{background:var(--card);border-bottom:2px solid var(--border);padding:8px 40px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .nav-home{padding:5px 16px;border-radius:4px;font-size:.78rem;font-weight:700;text-decoration:none;color:var(--accent);background:#f9f5ee;border:1px solid var(--border);transition:all .15s;letter-spacing:.02em}
+    .nav-home:hover{background:#f0e8d8;border-color:var(--gold)}
+    .nav-sep{width:1px;height:20px;background:var(--border)}
+    .nav-group{display:flex;align-items:center;gap:6px}
+    .nav-group-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding-right:10px;border-right:1px solid var(--border);margin-right:2px}
+    .nav-layer{padding:5px 12px;border-radius:4px;font-size:.73rem;font-weight:600;text-decoration:none;border:1px solid;transition:all .15s;letter-spacing:.01em}
+    .nav-layer.overview{color:var(--blue);border-color:rgba(26,111,224,.35);background:rgba(26,111,224,.07)}.nav-layer.overview:hover,.nav-layer.overview.active{background:rgba(26,111,224,.2);border-color:var(--blue)}
+    .nav-layer.bronze{color:#c96827;border-color:rgba(201,104,39,.35);background:rgba(201,104,39,.07)}.nav-layer.bronze:hover,.nav-layer.bronze.active{background:rgba(201,104,39,.18);border-color:#c96827}
+    .nav-layer.silver{color:var(--muted);border-color:rgba(138,122,101,.35);background:rgba(138,122,101,.07)}.nav-layer.silver:hover,.nav-layer.silver.active{background:rgba(138,122,101,.18);border-color:var(--muted)}
+    .nav-layer.gold{color:var(--gold);border-color:rgba(154,115,24,.35);background:rgba(154,115,24,.07)}.nav-layer.gold:hover,.nav-layer.gold.active{background:rgba(154,115,24,.18);border-color:var(--gold)}
+    .nav-layer.platinum{color:var(--accent);border-color:rgba(92,64,32,.35);background:rgba(92,64,32,.07)}.nav-layer.platinum:hover,.nav-layer.platinum.active{background:rgba(92,64,32,.18);border-color:var(--accent)}
+    /* page structure */
+    .page-header{background:var(--card);border-bottom:1px solid var(--border);padding:28px 40px}
+    .page-header h1{font-size:1.35rem;font-weight:700;margin-bottom:8px}
+    .page-header p{color:var(--muted);font-size:.85rem;max-width:740px;line-height:1.7}
+    .content{padding:32px 40px;max-width:1080px}
+    /* pipeline flow banner */
+    .flow-banner{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px 32px;margin-bottom:32px;box-shadow:var(--shadow)}
+    .flow-banner-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:20px}
+    .pipeline{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap}
+    .p-node{text-align:center;padding:0 6px}
+    .p-icon{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto 8px}
+    .p-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+    .p-desc{font-size:.66rem;color:var(--muted);line-height:1.45}
+    .p-arrow{font-size:1.2rem;color:var(--border);padding:0 2px;padding-bottom:22px}
+    /* layer cards */
+    .layer-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:24px}
+    .lc-header{padding:16px 24px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
+    .lc-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
+    .lc-title{font-size:1rem;font-weight:700;margin-bottom:2px}
+    .lc-sub{font-size:.73rem;color:var(--muted)}
+    .lc-sub code{font-family:'JetBrains Mono',monospace;font-size:.68rem}
+    .lc-body{padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .lc-body.full{grid-template-columns:1fr}
+    .block{background:#faf8f5;border:1px solid var(--border);border-radius:8px;padding:15px 17px}
+    .block h3{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:9px}
+    .block p{font-size:.81rem;color:var(--text);line-height:1.68}
+    .block p + p{margin-top:8px}
+    /* data tables */
+    .ex-table{width:100%;border-collapse:collapse;margin-top:8px}
+    .ex-table th{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;color:var(--muted);text-align:left;padding:4px 8px;border-bottom:2px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+    .ex-table td{font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.06);white-space:nowrap}
+    .ex-table tr:last-child td{border-bottom:none}
+    .ex-table .hl{font-weight:700}
+    /* transformation visual */
+    .transform-row{display:flex;align-items:flex-start;gap:12px}
+    .transform-col{flex:1;min-width:0}
+    .transform-arrow{font-size:1.4rem;color:var(--muted);padding-top:28px;flex-shrink:0}
+    /* formula block */
+    .formula{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(154,115,24,.06);border:1px solid rgba(154,115,24,.22);border-radius:6px;padding:11px 14px;line-height:2;margin:10px 0}
+    /* dashboard preview grid */
+    .dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+    .dash-tile{background:#faf8f5;border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+    .dash-tile-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:7px}
+    .dash-tile p{font-size:.79rem;line-height:1.6;color:var(--text)}
+    /* color helpers */
+    .c-bronze{color:#c96827} .c-silver{color:#8a7a65} .c-gold{color:#9a7318} .c-platinum{color:#7a4eb5} .c-blue{color:var(--blue)}
+    .bg-bronze{background:rgba(201,104,39,.05);border-color:rgba(201,104,39,.22)!important}
+    .bg-silver{background:rgba(138,122,101,.05);border-color:rgba(138,122,101,.22)!important}
+    .bg-gold{background:rgba(154,115,24,.05);border-color:rgba(154,115,24,.22)!important}
+    .bg-platinum{background:rgba(122,78,181,.05);border-color:rgba(122,78,181,.22)!important}
+    .dive-link{display:inline-block;margin-top:12px;font-size:.72rem;font-weight:600;text-decoration:none;padding:4px 12px;border-radius:4px;border:1px solid;transition:all .15s}
+    .page-footer{text-align:center;padding:24px;color:var(--muted);font-size:.72rem;border-top:1px solid var(--border);margin-top:8px}
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="../platinum/index.html" class="nav-home">&#8962; Home</a>
+  <div class="nav-sep"></div>
+  <div class="nav-group">
+    <span class="nav-group-label">Data Architecture</span>
+    <a href="overview.html" class="nav-layer overview active">Overview</a>
+    <a href="bronze.html" class="nav-layer bronze">Bronze</a>
+    <a href="silver.html" class="nav-layer silver">Silver</a>
+    <a href="gold.html" class="nav-layer gold">Gold</a>
+    <a href="platinum.html" class="nav-layer platinum">Platinum</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>Medallion Architecture</h1>
+  <p>
+    Medallion architecture organizes data through a series of progressive refinement layers — each named after increasingly precious metals.
+    Raw data enters at <strong>Bronze</strong>, is cleaned and standardized at <strong>Silver</strong>, aggregated into business metrics at <strong>Gold</strong>,
+    and delivered as a polished product at <strong>Platinum</strong>. Each layer adds structure and meaning, making the data more reliable and easier to consume at every step.
+  </p>
+  <p style="margin-top:8px">
+    This guide walks through each layer as built in the Hahn Family Farm pipeline — ingesting NOAA daily weather observations for Gage County, Nebraska and transforming them into growing-season agricultural insights.
+    Click any layer button above for a detailed architecture diagram of that stage.
+  </p>
+</div>
+
+<div class="content">
+
+  <!-- ── PIPELINE AT A GLANCE ─── -->
+  <div class="flow-banner">
+    <div class="flow-banner-title">Pipeline at a glance</div>
+    <div class="pipeline">
+
+      <div class="p-node">
+        <div class="p-icon" style="background:rgba(26,111,224,.09);border:2px solid rgba(26,111,224,.28)">🌐</div>
+        <div class="p-label c-blue">NOAA API</div>
+        <div class="p-desc">NCEI daily<br>observations</div>
+      </div>
+      <div class="p-arrow">→</div>
+
+      <div class="p-node">
+        <div class="p-icon" style="background:rgba(201,104,39,.09);border:2px solid rgba(201,104,39,.28)">🪨</div>
+        <div class="p-label c-bronze">Bronze</div>
+        <div class="p-desc">Raw storage<br>Delta Lake</div>
+      </div>
+      <div class="p-arrow">→</div>
+
+      <div class="p-node">
+        <div class="p-icon" style="background:rgba(138,122,101,.09);border:2px solid rgba(138,122,101,.28)">🔧</div>
+        <div class="p-label c-silver">Silver</div>
+        <div class="p-desc">Cleaned &amp;<br>typed records</div>
+      </div>
+      <div class="p-arrow">→</div>
+
+      <div class="p-node">
+        <div class="p-icon" style="background:rgba(154,115,24,.09);border:2px solid rgba(154,115,24,.28)">📊</div>
+        <div class="p-label c-gold">Gold</div>
+        <div class="p-desc">Annual growing-<br>season metrics</div>
+      </div>
+      <div class="p-arrow">→</div>
+
+      <div class="p-node">
+        <div class="p-icon" style="background:rgba(122,78,181,.09);border:2px solid rgba(122,78,181,.28)">✨</div>
+        <div class="p-label c-platinum">Platinum</div>
+        <div class="p-desc">Interactive<br>dashboard</div>
+      </div>
+
+    </div>
+    <p style="font-size:.76rem;color:var(--muted);text-align:center;margin-top:18px">
+      Run <code style="font-family:monospace;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px">Refresh_Full_NOAAWeather_Data</code> to execute all four layers in order.
+      Run individual layers with <code style="font-family:monospace;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px">CustomRun bronze</code>,
+      <code style="font-family:monospace;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:3px">silver</code>, etc.
+    </p>
+  </div>
+
+
+  <!-- ── BRONZE ─── -->
+  <div class="layer-card">
+    <div class="lc-header" style="background:rgba(201,104,39,.04);border-bottom-color:rgba(201,104,39,.18)">
+      <div class="lc-icon" style="background:rgba(201,104,39,.12);border:1px solid rgba(201,104,39,.3)">🪨</div>
+      <div>
+        <div class="lc-title c-bronze">Bronze — Raw Ingestion</div>
+        <div class="lc-sub">Job: <code>NoaaIncrementalUpdateJob</code> &nbsp;·&nbsp; Output: <code>data/bronze/noaa_observations/</code></div>
+      </div>
+    </div>
+    <div class="lc-body">
+      <div class="block">
+        <h3>What it means</h3>
+        <p>Bronze is the landing zone for raw data. Nothing is changed — units, formats, and field names stay exactly as the source delivers them. The goal is completeness and reproducibility: if something goes wrong downstream, you can always re-derive every result from Bronze without calling the API again.</p>
+      </div>
+      <div class="block">
+        <h3>In this project</h3>
+        <p>The NOAA NCEI API returns daily observations in <strong>long format</strong> — one row per station, date, and data type. Bronze stores these rows as-is in a Delta Lake table. Temperatures are in <strong>°C</strong>, precipitation in <strong>mm</strong>.</p>
+        <p>The anchor station is <strong>Beatrice 1 N, NE</strong> (USC00250622). The incremental update job also fetches all Gage County stations plus the Lincoln Airport ASOS (USW00014939) as a supplemental temperature source.</p>
+      </div>
+      <div class="block" style="grid-column:1/-1">
+        <h3>Example — one row per station / date / measurement type</h3>
+        <table class="ex-table">
+          <thead>
+            <tr><th>stationId</th><th>date</th><th>dataType</th><th>value</th><th>note</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>GHCND:USC00250622</td><td>2022-07-15</td><td class="hl c-bronze">TMAX</td><td>32.2</td><td style="color:var(--muted);font-style:italic">max temp in °C — not yet converted</td></tr>
+            <tr><td>GHCND:USC00250622</td><td>2022-07-15</td><td class="hl c-bronze">TMIN</td><td>18.9</td><td style="color:var(--muted);font-style:italic">min temp in °C</td></tr>
+            <tr><td>GHCND:USC00250622</td><td>2022-07-15</td><td class="hl c-bronze">PRCP</td><td>12.4</td><td style="color:var(--muted);font-style:italic">precipitation in mm</td></tr>
+            <tr><td>GHCND:USC00259330</td><td>2022-07-15</td><td class="hl c-bronze">TMAX</td><td>31.7</td><td style="color:var(--muted);font-style:italic">a second Gage County station</td></tr>
+            <tr><td>GHCND:USW00014939</td><td>2022-07-15</td><td class="hl c-bronze">TMAX</td><td>33.1</td><td style="color:var(--muted);font-style:italic">Lincoln Airport ASOS — supplemental</td></tr>
+          </tbody>
+        </table>
+        <a href="bronze.html" class="dive-link c-bronze" style="border-color:rgba(201,104,39,.35)">View full Bronze diagram →</a>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── SILVER ─── -->
+  <div class="layer-card">
+    <div class="lc-header" style="background:rgba(138,122,101,.04);border-bottom-color:rgba(138,122,101,.18)">
+      <div class="lc-icon" style="background:rgba(138,122,101,.12);border:1px solid rgba(138,122,101,.3)">🔧</div>
+      <div>
+        <div class="lc-title c-silver">Silver — Cleaning &amp; Conforming</div>
+        <div class="lc-sub">Job: <code>WeatherTransformJob</code> &nbsp;·&nbsp; Output: <code>data/silver/weather_observations/</code></div>
+      </div>
+    </div>
+    <div class="lc-body">
+      <div class="block">
+        <h3>What it means</h3>
+        <p>Silver cleans and standardizes Bronze data. Columns are given consistent types, units are converted to a common standard, and gaps are filled using defined fallback rules. The result is a wide-format table that downstream consumers can trust without worrying about which station the data came from or what units it uses.</p>
+      </div>
+      <div class="block">
+        <h3>In this project</h3>
+        <p>Bronze's long-format rows (one per station/date/type) are <strong>pivoted to wide format</strong> (one row per date). Temperatures convert <strong>°C → °F</strong>; precipitation converts <strong>mm → inches</strong>.</p>
+        <p>A three-tier <strong>temperature fallback</strong> fills gaps in order of geographic priority: <strong>(1) anchor station</strong> → <strong>(2) Gage County pool median</strong> → <strong>(3) Lincoln ASOS supplemental</strong>. A <code style="font-family:monospace;font-size:.72rem">tempSource</code> column records which tier was used on each date.</p>
+      </div>
+      <div class="block" style="grid-column:1/-1">
+        <h3>Transformation — long format in, wide format out, units converted</h3>
+        <div class="transform-row">
+          <div class="transform-col">
+            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Bronze (input) — long</div>
+            <table class="ex-table">
+              <thead><tr><th>date</th><th>dataType</th><th>value</th></tr></thead>
+              <tbody>
+                <tr><td>2022-07-15</td><td class="c-bronze">TMAX</td><td>32.2 °C</td></tr>
+                <tr><td>2022-07-15</td><td class="c-bronze">TMIN</td><td>18.9 °C</td></tr>
+                <tr><td>2022-07-15</td><td class="c-bronze">PRCP</td><td>12.4 mm</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="transform-arrow">→</div>
+          <div class="transform-col">
+            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Silver (output) — wide</div>
+            <table class="ex-table">
+              <thead><tr><th>date</th><th>tempMaxF</th><th>tempMinF</th><th>tempAvgF</th><th>precipIn</th><th>tempSource</th></tr></thead>
+              <tbody>
+                <tr><td>2022-07-15</td><td class="hl c-silver">90.0</td><td class="hl c-silver">66.0</td><td class="hl c-silver">78.0</td><td>0.49</td><td style="color:var(--muted)">anchor</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <a href="silver.html" class="dive-link c-silver" style="border-color:rgba(138,122,101,.35)">View full Silver diagram →</a>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── GOLD ─── -->
+  <div class="layer-card">
+    <div class="lc-header" style="background:rgba(154,115,24,.04);border-bottom-color:rgba(154,115,24,.18)">
+      <div class="lc-icon" style="background:rgba(154,115,24,.12);border:1px solid rgba(154,115,24,.3)">📊</div>
+      <div>
+        <div class="lc-title c-gold">Gold — Business Aggregation</div>
+        <div class="lc-sub">Job: <code>SeasonWeatherJob</code> &nbsp;·&nbsp; Output: <code>data/gold/season_weather/</code></div>
+      </div>
+    </div>
+    <div class="lc-body">
+      <div class="block">
+        <h3>What it means</h3>
+        <p>Gold applies business logic to produce the metrics that stakeholders care about. Daily records are aggregated to the right grain — here, annual growing-season summaries. Gold answers the core question: <em>how did this growing season compare to past years?</em></p>
+      </div>
+      <div class="block">
+        <h3>In this project</h3>
+        <p>Silver daily records are rolled up by year into growing-season statistics covering April–October. <strong>Growing Degree Days (GDD)</strong> measure accumulated heat useful for corn development. <strong>Heat stress days</strong> count days above 95°F — a known yield risk.</p>
+        <p>The pipeline covers <strong>2000–2012</strong>, the years when the anchor station reported full temperature data. It became precipitation-only in 2013.</p>
+      </div>
+      <div class="block bg-gold" style="grid-column:1/-1">
+        <h3>Key metric — Growing Degree Days (GDD)</h3>
+        <p style="margin-bottom:10px">GDD is the primary indicator of crop development. High-temperature days are capped (corn stops benefiting above 86°F) and cold nights are floored (no development below 50°F).</p>
+        <div class="formula">
+          daily GDD &nbsp;=&nbsp; max(0, &nbsp;( min(T<sub>MAX</sub>, 86°F) + max(T<sub>MIN</sub>, 50°F) ) ÷ 2 &nbsp;−&nbsp; 50°F )
+        </div>
+        <table class="ex-table" style="margin-top:12px">
+          <thead>
+            <tr><th>year</th><th>totalGDD</th><th>totalPrecipIn</th><th>heatStressDays</th><th>mayAvgTempF</th><th>julAvgTempF</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>2012</td><td class="hl c-gold">2,986</td><td>22.1</td><td>18</td><td>62.4</td><td>83.5</td></tr>
+            <tr><td>2011</td><td class="hl c-gold">2,614</td><td>31.8</td><td>9</td><td>58.1</td><td>79.2</td></tr>
+            <tr><td>2010</td><td class="hl c-gold">2,741</td><td>35.4</td><td>11</td><td>60.0</td><td>81.7</td></tr>
+          </tbody>
+        </table>
+        <a href="gold.html" class="dive-link c-gold" style="border-color:rgba(154,115,24,.35)">View full Gold diagram →</a>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── PLATINUM ─── -->
+  <div class="layer-card">
+    <div class="lc-header" style="background:rgba(122,78,181,.04);border-bottom-color:rgba(122,78,181,.18)">
+      <div class="lc-icon" style="background:rgba(122,78,181,.12);border:1px solid rgba(122,78,181,.3)">✨</div>
+      <div>
+        <div class="lc-title c-platinum">Platinum — Presentation</div>
+        <div class="lc-sub">Job: <code>PlatinumExportJob</code> &nbsp;·&nbsp; Output: <code>platinum/index.html</code></div>
+      </div>
+    </div>
+    <div class="lc-body">
+      <div class="block">
+        <h3>What it means</h3>
+        <p>Platinum is the consumption layer — polished, ready-to-use output delivered in the form end users need. It never stores raw or intermediate data; it transforms Gold metrics into a finished product optimized for its audience. Anyone who needs the answer does not need to know how the pipeline works.</p>
+      </div>
+      <div class="block">
+        <h3>In this project</h3>
+        <p>Gold annual summaries are rendered into a <strong>self-contained Plotly.js HTML dashboard</strong> — one file, no server, no dependencies. Charts include year-over-year GDD, precipitation, and temperature trends with interactive hover, zoom, and crop selection.</p>
+        <p>The entire dashboard is a single <code style="font-family:monospace;font-size:.72rem">index.html</code> that anyone on the family can open in a browser and explore.</p>
+      </div>
+      <div class="block bg-platinum" style="grid-column:1/-1">
+        <h3>What gets embedded in the dashboard</h3>
+        <div class="dash-grid">
+          <div class="dash-tile">
+            <div class="dash-tile-label">Growing Degree Days</div>
+            <p>Year-over-year GDD totals showing warm vs. cool growing seasons. 2012 stands out as the hottest and driest year in the record.</p>
+          </div>
+          <div class="dash-tile">
+            <div class="dash-tile-label">Precipitation</div>
+            <p>Annual totals and monthly breakdowns — drought years (2012) and wet years (2010) are immediately visible in the trend chart.</p>
+          </div>
+          <div class="dash-tile">
+            <div class="dash-tile-label">Heat Stress Days</div>
+            <p>Count of days above 95°F during the growing season. A direct risk factor for corn pollination and yield — mapped per year.</p>
+          </div>
+          <div class="dash-tile">
+            <div class="dash-tile-label">Monthly Temperatures</div>
+            <p>Daily and monthly average temperatures for May through September — the critical months for corn and soy development.</p>
+          </div>
+          <div class="dash-tile">
+            <div class="dash-tile-label">Daily Detail</div>
+            <p>Interactive daily chart with precipitation bars and temperature lines. Gaps show where station data is missing for that date.</p>
+          </div>
+          <div class="dash-tile">
+            <div class="dash-tile-label">Crop Toggle</div>
+            <p>Sidebar controls let you filter charts by crop (corn, soy, winter wheat) and select individual years for comparison.</p>
+          </div>
+        </div>
+        <a href="platinum.html" class="dive-link c-platinum" style="border-color:rgba(122,78,181,.35)">View full Platinum diagram →</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="page-footer">
+  Hahn Family Farm &nbsp;·&nbsp; Gage County, Nebraska &nbsp;·&nbsp; Medallion Architecture Overview
+</div>
+</body>
+</html>
