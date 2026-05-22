@@ -400,7 +400,11 @@
         <div class="section-label">Side output</div>
         <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
           <span class="field-key">row_count_by_year.csv</span>
-          <span class="field-val" style="font-size:.62rem;color:var(--muted)">data/silver/ &mdash; year / count</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">data/silver/ &mdash; year / row count</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">validation_report.csv</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">data/silver/ &mdash; per-year quality metrics</span>
         </div>
       </div>
       <hr class="divider">
@@ -408,6 +412,102 @@
         <div class="section-label">Temperature fallback</div>
         <div style="font-size:.68rem;color:var(--muted);line-height:1.5">
           USC00250622 is precip-only after ~2013. Gaps filled first by pool median across all bronze stations, then by supplemental ASOS USW00014939 (Lincoln Airport), enabling full year coverage 2000&ndash;present.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g5" x1="0" x2="1"><stop offset="0%" stop-color="#39d0c8"/><stop offset="100%" stop-color="#bc8cff"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g5)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#bc8cff"/>
+    </svg>
+  </div>
+
+  <!-- SILVER VALIDATION -->
+  <div class="card">
+    <div class="card-header bg-purple" style="border-bottom-color:rgba(188,140,255,.3)">
+      <div class="icon" style="background:rgba(188,140,255,.2)">&#9432;</div>
+      <div>
+        <div class="title c-purple">Silver Validation</div>
+        <div class="sub">post-write checks &middot; WeatherTransformJob</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">1 — Temperature source breakdown</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">Count and % of rows per <code>tempSource</code>: anchor / pool / supplemental. Reveals how often each fallback tier is used.</div>
+        </div>
+        <div style="margin-top:4px">
+          <span class="badge" style="color:var(--green)">anchor</span>
+          <span class="badge" style="color:var(--blue)">pool</span>
+          <span class="badge" style="color:var(--purple)">supplemental</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">2 — Null temperature gaps</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">Count rows where <code>tempAvgF IS NULL</code> — no temperature from any fallback tier. These dates will appear as gaps in the dashboard.</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">3 — Quality flag distribution</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">Count rows per <code>qualityFlag</code> value; SUSPECT and MISSING counts are logged as WARN.</div>
+        </div>
+        <div style="margin-top:4px">
+          <span class="badge" style="color:var(--green)">OK</span>
+          <span class="badge" style="color:var(--orange)">SUSPECT</span>
+          <span class="badge" style="color:var(--red)">MISSING</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">4 — Physical outlier flags</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><strong>TEMP_INVERSION</strong> — tempMaxF &lt; tempMinF on the same day</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><strong>TEMP_MAX_HIGH</strong> — tempMaxF &gt; 115°F (above NE all-time record)</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><strong>TEMP_MIN_LOW</strong> — tempMinF &lt; &minus;40°F (below plausible NE low)</div>
+        </div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><strong>PRECIP_HIGH</strong> — precipIn &gt; 6 in/day (extremely rare for Gage County)</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">5 — Year completeness</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">Silver rows per year vs expected 365/366; years below 90% logged as WARN.</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Output</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">path</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--purple)">data/silver/validation_report.csv</span>
+        </div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:3px;line-height:1.6">
+          Columns: year, total_rows, expected_days, coverage_pct, coverage_status, null_temp_rows, src_anchor, src_pool, src_supplemental, qf_ok, qf_suspect, qf_missing, out_inversion, out_temp_max_high, out_temp_min_low, out_precip_high
+        </div>
+        <div class="warn-chip" style="margin-top:6px">
+          <span>&#9888;</span> All issues logged as WARN; non-blocking
         </div>
       </div>
     </div>

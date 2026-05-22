@@ -392,8 +392,83 @@
       <div>
         <div class="section-label">Verification</div>
         <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
-          <span class="field-key">VerifyBronzeJob</span>
-          <span class="field-val" style="font-size:.62rem;color:var(--muted)">counts per stationId / year / field</span>
+          <span class="field-key">row_count_by_year.csv</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">non-null counts per stationId / year / dataType</span>
+        </div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">validation_report.csv</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--muted)">coverage, inversions &amp; outliers per station/year</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <svg width="44" height="20" viewBox="0 0 44 20">
+      <defs><linearGradient id="g5" x1="0" x2="1"><stop offset="0%" stop-color="#39d0c8"/><stop offset="100%" stop-color="#bc8cff"/></linearGradient></defs>
+      <line x1="2" y1="10" x2="38" y2="10" stroke="url(#g5)" stroke-width="1.5"/>
+      <polygon points="38,5 44,10 38,15" fill="#bc8cff"/>
+    </svg>
+  </div>
+
+  <!-- VALIDATION -->
+  <div class="card">
+    <div class="card-header bg-purple" style="border-bottom-color:rgba(188,140,255,.3)">
+      <div class="icon" style="background:rgba(188,140,255,.2)">&#9432;</div>
+      <div>
+        <div class="title c-purple">BronzeQualityCheckJob</div>
+        <div class="sub">com.cornbelt.bronze &middot; validation_report.csv</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="section-label">1 — Coverage check</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><code>countDistinct(date)</code> per station/year vs calendar days (365 / 366)</div>
+        </div>
+        <div style="margin-top:4px">
+          <span class="badge" style="color:var(--green)">OK &ge;90%</span>
+          <span class="badge" style="color:var(--orange)">INCOMPLETE 50–89%</span>
+          <span class="badge" style="color:var(--red)">SPARSE &lt;50%</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">2 — TMAX &lt; TMIN inversions</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">Pivot long &rarr; wide per date; flag rows where high temp &lt; low temp (data entry error or API artefact)</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">3 — Extreme value outliers</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text">TMAX &gt; 55°C or &lt; &minus;45°C; TMIN &gt; 45°C or &lt; &minus;55°C; PRCP &gt; 250mm/day — physically implausible for Nebraska</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">4 — Duplicate row detection</div>
+        <div class="logic-step">
+          <div class="step-num" style="background:rgba(188,140,255,.2);color:var(--purple)">&#10003;</div>
+          <div class="step-text"><code>groupBy(stationId, date, dataType).count &gt; 1</code> — warns if the same observation was ingested twice</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div>
+        <div class="section-label">Output</div>
+        <div class="field-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="field-key">path</span>
+          <span class="field-val" style="font-size:.62rem;color:var(--purple)">data/bronze/validation_report.csv</span>
+        </div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:3px;line-height:1.6">
+          Columns: station_id, year, active_days, expected_days, coverage_pct, coverage_status, inversions, extreme_vals
+        </div>
+        <div class="warn-chip" style="margin-top:6px">
+          <span>&#9888;</span> Issues &rarr; WARN logged; duplicates block silver run
         </div>
       </div>
     </div>

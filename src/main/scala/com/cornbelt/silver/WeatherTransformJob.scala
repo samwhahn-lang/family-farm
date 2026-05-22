@@ -258,5 +258,120 @@ object WeatherTransformJob extends LazyLogging {
 
     logger.info(s"Silver row counts by year -> $csvPath")
     counts.foreach(r => logger.info(s"  ${r.getAs[Int]("year")}: ${r.getAs[Long]("count")} rows"))
+
+    // ── Silver validation report ───────────────────────────────────────────────
+    logger.info("Running silver validation checks...")
+
+    // Returns 366 for leap years, 365 otherwise.
+    val isLeapYear = udf((y: Int) => if ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) 366 else 365)
+
+    val silverDf = spark.read.format("delta").load(silverPath)
+
+    // Single scan: compute all validation metrics grouped by year.
+    val valRows = silverDf
+      .withColumn("yr", year(col("date")))
+      .groupBy("yr")
+      .agg(
+        count("*").alias("totalRows"),
+        // Temperature gaps — null after all three fallback tiers
+        sum(when(col("tempAvgF").isNull, 1L).otherwise(0L)).alias("nullTempRows"),
+        // Temperature source breakdown
+        sum(when(col("tempSource") === "anchor",       1L).otherwise(0L)).alias("srcAnchor"),
+        sum(when(col("tempSource") === "pool",         1L).otherwise(0L)).alias("srcPool"),
+        sum(when(col("tempSource") === "supplemental", 1L).otherwise(0L)).alias("srcSupplemental"),
+        // Quality flag breakdown
+        sum(when(col("qualityFlag") === "OK",      1L).otherwise(0L)).alias("qfOk"),
+        sum(when(col("qualityFlag") === "SUSPECT",  1L).otherwise(0L)).alias("qfSuspect"),
+        sum(when(col("qualityFlag") === "MISSING",  1L).otherwise(0L)).alias("qfMissing"),
+        // Physical outlier flags (converted °F / inches units at this stage)
+        // TEMP_INVERSION: high temp below low temp on the same day
+        sum(when(col("tempMaxF").isNotNull && col("tempMinF").isNotNull &&
+                 col("tempMaxF") < col("tempMinF"), 1L).otherwise(0L)).alias("outInversion"),
+        // TEMP_MAX_HIGH: above Nebraska all-time record (118°F); use 115 as anomaly threshold
+        sum(when(col("tempMaxF") > 115.0, 1L).otherwise(0L)).alias("outTempMaxHigh"),
+        // TEMP_MIN_LOW: below plausible Nebraska low (-40°F)
+        sum(when(col("tempMinF") < -40.0, 1L).otherwise(0L)).alias("outTempMinLow"),
+        // PRECIP_HIGH: > 6 inches in a single day (extremely rare for Gage County)
+        sum(when(col("precipIn") > 6.0,  1L).otherwise(0L)).alias("outPrecipHigh")
+      )
+      .withColumn("expectedDays", isLeapYear(col("yr")))
+      .withColumn("coveragePct", round(col("totalRows") * 100.0 / col("expectedDays"), 1))
+      .withColumn("coverageStatus",
+        when(col("totalRows") < col("expectedDays") * 0.5, lit("SPARSE"))
+          .when(col("totalRows") < col("expectedDays") * 0.9, lit("INCOMPLETE"))
+          .otherwise(lit("OK"))
+      )
+      .orderBy("yr")
+      .collect()
+
+    // Log summary across all years
+    val totalSilverRows = valRows.map(_.getAs[Long]("totalRows")).sum
+    val totalNullTemp   = valRows.map(_.getAs[Long]("nullTempRows")).sum
+    val totalSuspect    = valRows.map(_.getAs[Long]("qfSuspect")).sum
+    val totalMissing    = valRows.map(_.getAs[Long]("qfMissing")).sum
+    logger.info(s"Silver validation: $totalSilverRows total rows, $totalNullTemp with null tempAvgF")
+
+    if (totalNullTemp > 0)
+      logger.warn(s"VALIDATION: $totalNullTemp silver rows have null tempAvgF — no temperature from any fallback source.")
+    if (totalSuspect > 0)
+      logger.warn(s"VALIDATION: $totalSuspect silver rows have qualityFlag=SUSPECT.")
+    if (totalMissing > 0)
+      logger.warn(s"VALIDATION: $totalMissing silver rows have qualityFlag=MISSING.")
+
+    Seq("outInversion"  -> "TEMP_INVERSION (tempMaxF < tempMinF)",
+        "outTempMaxHigh"-> "TEMP_MAX_HIGH (> 115°F)",
+        "outTempMinLow" -> "TEMP_MIN_LOW (< -40°F)",
+        "outPrecipHigh" -> "PRECIP_HIGH (> 6 in/day)"
+    ).foreach { case (colName, label) =>
+      val total = valRows.map(_.getAs[Long](colName)).sum
+      if (total > 0) logger.warn(s"VALIDATION: $total silver rows flagged $label.")
+      else           logger.info(s"VALIDATION: No $label outliers found.")
+    }
+
+    // Per-year warnings for years with gaps or incomplete coverage
+    valRows.foreach { row =>
+      val yr      = row.getAs[Int]("yr")
+      val status  = row.getAs[String]("coverageStatus")
+      val nullT   = row.getAs[Long]("nullTempRows")
+      val total   = row.getAs[Long]("totalRows")
+      val pct     = row.getAs[Double]("coveragePct")
+      val expDays = row.getAs[Int]("expectedDays")
+      if (status != "OK")
+        logger.warn(s"  VALIDATION: Silver $yr has $total/$expDays days ($pct%) [$status]")
+      if (nullT > 0)
+        logger.warn(f"  VALIDATION: Silver $yr has $nullT/$total rows with null tempAvgF (${nullT * 100.0 / total}%.1f%%).")
+    }
+
+    // Write per-year validation report CSV
+    val svValPath = s"${pathsCfg.getString("silver")}/validation_report.csv"
+    val svWriter  = new PrintWriter(new OutputStreamWriter(
+      new FileOutputStream(svValPath), StandardCharsets.UTF_8))
+    svWriter.println(
+      "year,total_rows,expected_days,coverage_pct,coverage_status,null_temp_rows," +
+      "src_anchor,src_pool,src_supplemental,qf_ok,qf_suspect,qf_missing," +
+      "out_inversion,out_temp_max_high,out_temp_min_low,out_precip_high"
+    )
+    valRows.foreach { row =>
+      svWriter.println(Seq(
+        row.getAs[Int]("yr").toString,
+        row.getAs[Long]("totalRows").toString,
+        row.getAs[Int]("expectedDays").toString,
+        row.getAs[Double]("coveragePct").toString,
+        row.getAs[String]("coverageStatus"),
+        row.getAs[Long]("nullTempRows").toString,
+        row.getAs[Long]("srcAnchor").toString,
+        row.getAs[Long]("srcPool").toString,
+        row.getAs[Long]("srcSupplemental").toString,
+        row.getAs[Long]("qfOk").toString,
+        row.getAs[Long]("qfSuspect").toString,
+        row.getAs[Long]("qfMissing").toString,
+        row.getAs[Long]("outInversion").toString,
+        row.getAs[Long]("outTempMaxHigh").toString,
+        row.getAs[Long]("outTempMinLow").toString,
+        row.getAs[Long]("outPrecipHigh").toString
+      ).mkString(","))
+    }
+    svWriter.close()
+    logger.info(s"Silver validation report (${valRows.length} years) -> $svValPath")
   }
 }
